@@ -1,0 +1,105 @@
+using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Repositories;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Serilog;
+
+namespace SeguridadSocialApi
+{
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddControllers()
+                .AddNewtonsoftJson(options =>
+                {
+                    options.SerializerSettings.ContractResolver = new DefaultContractResolver
+                    {
+                        NamingStrategy = new SnakeCaseNamingStrategy()
+                    };
+                });
+            
+            // Agregar FluentValidation
+            services.AddFluentValidationAutoValidation();
+            services.AddFluentValidationClientsideAdapters();
+            services.AddValidatorsFromAssemblyContaining<Startup>();
+            
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", builder =>
+                {
+                    builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                });
+            });
+            services.AddSingleton<IConfiguration>(provider =>
+                new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .Build());
+
+            services.AddMemoryCache();
+            services.AddSingleton<IOracleConnectionFactory, OracleConnectionFactory>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            // Repositorios y servicios refactorizados
+            services.AddScoped<IHojaRepository, HojaRepository>();
+            services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
+            services.AddScoped<IArchivoRepository, ArchivoRepository>();
+            // services.AddScoped<IOracleService, OracleService>(); // Eliminado: ahora se usan los repositorios
+            services.AddSingleton<IFlowSessionManager, FlowSessionManager>();
+            services.AddScoped<FtpService>();
+            services.AddScoped<NovedadesService>();
+        }
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            // Agregar Serilog request logging
+            app.UseSerilogRequestLogging();
+
+            // Middleware global para manejo de excepciones (debe ir después de UseDeveloperExceptionPage)
+            app.Use(async (context, next) =>
+            {
+                try
+                {
+                    await next();
+                }
+                catch (ApplicationException ex)
+                {
+                    Log.Warning(ex, "Error de aplicación en {Path}", context.Request.Path);
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "application/json";
+                    var result = JsonConvert.SerializeObject(new { error = ex.Message });
+                    await context.Response.WriteAsync(result);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error inesperado en {Path}", context.Request.Path);
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    var result = JsonConvert.SerializeObject(new { error = "Ocurrió un error inesperado.", detail = ex.Message });
+                    await context.Response.WriteAsync(result);
+                }
+            });
+
+            app.UseRouting();
+            app.UseCors("AllowAll");
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+        }
+    }
+}
