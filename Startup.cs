@@ -53,10 +53,16 @@ namespace SeguridadSocialApi
             services.AddScoped<IHojaRepository, HojaRepository>();
             services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
             services.AddScoped<IArchivoRepository, ArchivoRepository>();
+            services.AddScoped<IJobProgressRepository, JobProgressRepository>();
             // services.AddScoped<IOracleService, OracleService>(); // Eliminado: ahora se usan los repositorios
             services.AddSingleton<IFlowSessionManager, FlowSessionManager>();
             services.AddScoped<FtpService>();
             services.AddScoped<NovedadesService>();
+            
+            // Background Jobs para SPs de larga duración
+            services.AddSingleton<IJobManager, JobManager>();
+            services.AddSingleton<BackgroundJobExecutor>();
+            services.AddHostedService(provider => provider.GetRequiredService<BackgroundJobExecutor>());
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

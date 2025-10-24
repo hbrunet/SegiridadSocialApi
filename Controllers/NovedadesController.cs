@@ -45,6 +45,20 @@ namespace SeguridadSocialApi.Controllers
             return Ok(response);
         }
 
+        [HttpPost]
+        [Route("crear-hoja-async")]
+        public IActionResult CrearHojaAsync([FromBody] CrearHojaRequest request)
+        {
+            if (request == null)
+                throw new ApplicationException("El body de la solicitud no puede ser nulo.");
+
+            if (request.CantidadRegistros <= 0)
+                throw new ApplicationException("La cantidad de registros debe ser mayor a cero.");
+
+            var response = _novedadesService.CrearHojaAsyncJob(request);
+            return Accepted(response); // 202 Accepted para indicar procesamiento asíncrono
+        }
+
         [HttpGet("listado-hojas")]
         public async Task<IActionResult> GetHojas(
             [FromQuery] DateTime? periodo,
