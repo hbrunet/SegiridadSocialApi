@@ -52,7 +52,8 @@ namespace SeguridadSocialApi.Repositories
                 var totalRegistros = await _unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
 
                 // Luego obtener los registros paginados
-                var sql = $@"SELECT MOD(h.ID,10000) as NROHOJA,
+                var sql = $@"SELECT h.ID,
+                                    MOD(h.ID,10000) as NROHOJA,
                                     H.PERIODO,
                                     H.IDTIPOLIQUIDACION,
                                     TL.DESCRIPCION AS TIPOLIQUIDACION,
@@ -115,6 +116,42 @@ namespace SeguridadSocialApi.Repositories
             catch (Exception ex)
             {
                 throw new ApplicationException($"Error al crear hoja: {ex.Message}");
+            }
+        }
+
+        public async Task ProcesarHojaAsync(int nroHoja)
+        {
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("vNROHOJA", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+                await _unitOfWork.Connection.ExecuteAsync(
+                    "SEGSOCIAL.DDJJ_MENSUAL.CARGA_DDJJ_MENSUAL_REP",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Error al procesar hoja {nroHoja}: {ex.Message}");
+            }
+        }
+
+        public async Task AnularHojaAsync(int nroHoja)
+        {
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("vNrohoja", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+                await _unitOfWork.Connection.ExecuteAsync(
+                    "USUARIO.WORKFLOW.hoja_anular",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Error al anular hoja {nroHoja}: {ex.Message}");
             }
         }
     }

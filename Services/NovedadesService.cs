@@ -202,5 +202,15 @@ namespace SeguridadSocialApi.Services
                 throw new ApplicationException($"Error al normalizar encoding del archivo: {ex.Message}");
             }
         }
+
+        public async Task ProcesarHojaAsync(int nroHoja)
+        {
+            await _hojaRepository.ProcesarHojaAsync(nroHoja);
+        }
+
+        public async Task AnularHojaAsync(int nroHoja)
+        {
+            await _hojaRepository.AnularHojaAsync(nroHoja);
+        }
     }
 }

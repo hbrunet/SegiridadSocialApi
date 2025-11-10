@@ -57,6 +57,36 @@ namespace SeguridadSocialApi.Controllers
             var hojas = await _novedadesService.GetHojasAsync(periodo, estado, nroHoja, idRep, page, pageSize);
             return Ok(hojas);
         }
+
+        [HttpPost("procesar-hoja/{id}")]
+        public async Task<IActionResult> ProcesarHoja(int id)
+        {
+            if (id <= 0)
+                throw new ApplicationException("El número de hoja debe ser mayor a cero.");
+
+            await _novedadesService.ProcesarHojaAsync(id);
+            
+            return Ok(new { 
+                message = $"Hoja {id} procesada exitosamente", 
+                nroHoja = id,
+                fechaProceso = DateTime.UtcNow
+            });
+        }
+
+        [HttpPut("anular-hoja/{id}")]
+        public async Task<IActionResult> AnularHoja(int id)
+        {
+            if (id <= 0)
+                throw new ApplicationException("El número de hoja debe ser mayor a cero.");
+
+            await _novedadesService.AnularHojaAsync(id);
+            
+            return Ok(new { 
+                message = $"Hoja {id} anulada exitosamente", 
+                nroHoja = id,
+                fechaAnulacion = DateTime.UtcNow
+            });
+        }
     }
 
 }

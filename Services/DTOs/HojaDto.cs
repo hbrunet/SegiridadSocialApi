@@ -2,6 +2,7 @@ namespace SeguridadSocialApi.Services.DTOs
 {
     public class HojaDto
     {
+        public int Id { get; set; }
         public int NroHoja { get; set; }
         public DateTime? Periodo { get; set; }
         public int IdTipoLiquidacion { get; set; }
