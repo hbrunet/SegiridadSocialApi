@@ -21,11 +21,11 @@ namespace SeguridadSocialApi.Services
             {
                 // Crear cliente FTP asíncrono
                 using var client = new AsyncFtpClient(_ftpHost);
-                
+
                 // Configuración equivalente a FtpWebRequest anterior
                 client.Config.EncryptionMode = FtpEncryptionMode.None; // EnableSsl = false
                 client.Config.DataConnectionType = FtpDataConnectionType.AutoPassive;
-                
+
                 // Conectar al servidor FTP (sin credenciales = anónimo)
                 await client.Connect();
 

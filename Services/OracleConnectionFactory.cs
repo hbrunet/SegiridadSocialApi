@@ -9,7 +9,7 @@ namespace SeguridadSocialApi.Services
 
         public OracleConnectionFactory(IConfiguration configuration)
         {
-            _connectionString = configuration["OracleConfig:ConnectionString"] 
+            _connectionString = configuration["OracleConfig:ConnectionString"]
                 ?? throw new InvalidOperationException("Oracle connection string not configured.");
         }
 

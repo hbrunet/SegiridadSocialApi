@@ -1,7 +1,7 @@
-
 using System.Net;
 using System.Text;
 using Oracle.ManagedDataAccess.Client;
+using Serilog;
 using SeguridadSocialApi.Controllers.Requests;
 using SeguridadSocialApi.Controllers.Responses;
 using SeguridadSocialApi.Repositories;
@@ -11,16 +11,12 @@ namespace SeguridadSocialApi.Services
 {
     public class NovedadesService
     {
-    private readonly IArchivoRepository _archivoRepository;
-    private readonly IHojaRepository _hojaRepository;
-    private readonly IConfiguration _config;
-    private readonly FtpService _ftpService;
-    private readonly IFlowSessionManager _flowSessionManager;
-    private readonly IUnitOfWork _unitOfWork;
-        public async Task<HojasPaginadasDto> GetHojasAsync(DateTime? periodo, int? estado, int? nroHoja, int? idRep, int page = 1, int pageSize = 10)
-        {
-            return await _hojaRepository.GetHojasAsync(periodo, estado, nroHoja, idRep, page, pageSize);
-        }
+        private readonly IArchivoRepository _archivoRepository;
+        private readonly IHojaRepository _hojaRepository;
+        private readonly IConfiguration _config;
+        private readonly FtpService _ftpService;
+        private readonly IFlowSessionManager _flowSessionManager;
+        private readonly IUnitOfWork _unitOfWork;
 
         public NovedadesService(IArchivoRepository archivoRepository, IHojaRepository hojaRepository, IConfiguration config, FtpService ftpService, IFlowSessionManager flowSessionManager, IUnitOfWork unitOfWork)
         {
@@ -32,7 +28,12 @@ namespace SeguridadSocialApi.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<UploadResponse> UploadFileAsync(IFormFile file, int tipoNovedad)
+        public async Task<HojasPaginadasDto> GetHojasAsync(DateTime? periodo, int? estado, int? nroHoja, int? idRep, int page = 1, int pageSize = 10)
+        {
+            return await _hojaRepository.GetHojasAsync(periodo, estado, nroHoja, idRep, page, pageSize);
+        }
+
+        public async Task<UploadResponse> UploadFileAsync(IFormFile file, int tipoNovedad, bool autoValidar = false)
         {
             // Iniciar un flujo para mantener la misma sesión de Oracle entre upload y creación
             string? flowId = null;
@@ -66,11 +67,11 @@ namespace SeguridadSocialApi.Services
                 _unitOfWork.UseExternalConnection(pinnedConn, ownsConnection: false);
 
                 await _archivoRepository.CrearExtabArchivoAsync(nombreArchivoServer, idArchivo, tipoNovedad, file.FileName, Dns.GetHostName());
-                
+
                 // Usar QueryMultiple para obtener info del archivo y sumas en un solo roundtrip
                 var (archivoInfo, sumaRemuneraciones) = await _archivoRepository.GetArchivoCargadoInfoConSumasAsync(idArchivo);
 
-                return new UploadResponse
+                var response = new UploadResponse
                 {
                     FileName = file.FileName,
                     CantidadRegistros = archivoInfo.CantReg,
@@ -82,6 +83,23 @@ namespace SeguridadSocialApi.Services
                     SumRem3 = sumaRemuneraciones.SumRem3,
                     FlowId = flowId
                 };
+
+                // Si se solicitó auto-validación, ejecutar validaciones usando el mismo FlowId
+                if (autoValidar && archivoInfo.CantReg > 0)
+                {
+                    try
+                    {
+                        var validaciones = await _archivoRepository.ValidarArchivoAsync(idArchivo, flowId);
+                        response.Validaciones = validaciones;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Si falla la validación, no bloqueamos el upload pero registramos el error
+                        Log.Warning(ex, "Error al ejecutar validaciones automáticas para archivo {IdArchivo}", idArchivo);
+                    }
+                }
+
+                return response;
             }
             catch
             {
@@ -141,7 +159,7 @@ namespace SeguridadSocialApi.Services
             try
             {
                 var bytes = await File.ReadAllBytesAsync(filePath);
-                
+
                 // Detectar encoding original
                 Encoding encodingOriginal;
                 int startIndex = 0;
@@ -211,6 +229,11 @@ namespace SeguridadSocialApi.Services
         public async Task AnularHojaAsync(int nroHoja)
         {
             await _hojaRepository.AnularHojaAsync(nroHoja);
+        }
+
+        public async Task<ValidacionArchivoDto> ValidarArchivoAsync(int idArchivo, string? flowId = null)
+        {
+            return await _archivoRepository.ValidarArchivoAsync(idArchivo, flowId);
         }
     }
 }

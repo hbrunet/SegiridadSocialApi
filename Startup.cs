@@ -1,5 +1,7 @@
 using SeguridadSocialApi.Services;
 using SeguridadSocialApi.Repositories;
+using SeguridadSocialApi.Validaciones;
+using SeguridadSocialApi.Validaciones.Rules;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using FluentValidation;
@@ -27,12 +29,12 @@ namespace SeguridadSocialApi
                         NamingStrategy = new SnakeCaseNamingStrategy()
                     };
                 });
-            
+
             // Agregar FluentValidation
             services.AddFluentValidationAutoValidation();
             services.AddFluentValidationClientsideAdapters();
             services.AddValidatorsFromAssemblyContaining<Startup>();
-            
+
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", builder =>
@@ -53,10 +55,28 @@ namespace SeguridadSocialApi
             services.AddScoped<IHojaRepository, HojaRepository>();
             services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
             services.AddScoped<IArchivoRepository, ArchivoRepository>();
-            // services.AddScoped<IOracleService, OracleService>(); // Eliminado: ahora se usan los repositorios
             services.AddSingleton<IFlowSessionManager, FlowSessionManager>();
             services.AddScoped<FtpService>();
             services.AddScoped<NovedadesService>();
+
+            // Registrar todas las reglas de validación
+            services.AddScoped<IValidacionRule, ValidarFormatoCuilRule>();
+            services.AddScoped<IValidacionRule, ValidarCamposObligatoriosGttRule>();
+            services.AddScoped<IValidacionRule, ValidarCuilDuplicadoRule>();
+            services.AddScoped<IValidacionRule, ValidarCodigoActividadRule>();
+            services.AddScoped<IValidacionRule, ValidarTipoEmpresaRule>();
+            services.AddScoped<IValidacionRule, ValidarCodigoCondicionRule>();
+            services.AddScoped<IValidacionRule, ValidarRemuneracionPositivaRule>();
+            services.AddScoped<IValidacionRule, ValidarRangosCamposRule>();
+            services.AddScoped<IValidacionRule, ValidarConsistenciaCamposRule>();
+            // TODO: Agregar más reglas según necesidades específicas de negocio
+
+            // Registrar el ejecutor de validaciones
+            services.AddScoped<ValidacionExecutor>(provider =>
+            {
+                var reglas = provider.GetServices<IValidacionRule>();
+                return new ValidacionExecutor(reglas);
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
