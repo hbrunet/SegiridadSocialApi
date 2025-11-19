@@ -50,7 +50,7 @@ namespace SeguridadSocialApi.Validaciones
         {
             return new DetalleValidacionDto
             {
-                Mensaje = $"[{NombreRegla}] {mensaje}",
+                Mensaje = mensaje,
                 Linea = linea,
                 Columna = columna
             };

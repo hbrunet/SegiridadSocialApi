@@ -1,4 +1,5 @@
 using Oracle.ManagedDataAccess.Client;
+using SeguridadSocialApi.Services.Interfaces;
 using System.Data;
 
 namespace SeguridadSocialApi.Services
@@ -19,3 +20,4 @@ namespace SeguridadSocialApi.Services
         }
     }
 }
+

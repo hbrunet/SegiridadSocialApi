@@ -26,8 +26,8 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar TIPOEMPRESA nulo
             var tipoEmpresaNulo = await connection.QueryAsync<RegistroError>(@"
-         SELECT ROWNUM AS Linea, CUIL, TIPOEMPRESA
-                FROM USUARIO.TMP_NOV_DDJJ_PREV
+     SELECT ID AS Linea, CUIL, TIPOEMPRESA
+FROM USUARIO.TMP_NOV_DDJJ_PREV
       WHERE TIPOEMPRESA IS NULL");
 
             errores.AddRange(tipoEmpresaNulo.Select(r => CrearDetalle(
@@ -38,16 +38,16 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar TIPOEMPRESA con valor no permitido
             var tipoEmpresaInvalido = await connection.QueryAsync<RegistroError>(@"
-      SELECT ROWNUM AS Linea, CUIL, TIPOEMPRESA
+      SELECT ID AS Linea, CUIL, TIPOEMPRESA
      FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE TIPOEMPRESA IS NOT NULL
           AND TIPOEMPRESA NOT IN ('3', 'G')");
 
             errores.AddRange(tipoEmpresaInvalido.Select(r => CrearDetalle(
-                   mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA = '{r.TipoEmpresa}' no es válido (valores permitidos: '3', 'G')",
-                  linea: r.Linea,
-              columna: 38
-             )));
+mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA = '{r.TipoEmpresa}' no es válido (valores permitidos: '3', 'G')",
+  linea: r.Linea,
+         columna: 38
+       )));
 
             return errores;
         }

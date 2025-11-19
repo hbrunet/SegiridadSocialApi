@@ -1,6 +1,7 @@
 using Dapper;
 using System.Data;
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
 using SeguridadSocialApi.Services.DTOs;
 
 namespace SeguridadSocialApi.Repositories
@@ -41,7 +42,7 @@ namespace SeguridadSocialApi.Repositories
 
                 if (idRep.HasValue)
                 {
-                    whereConditions.Add("TRIM(H.OBSERVACIONES) = TO_CHAR(:IdRep)");
+                    whereConditions.Add("TO_NUMBER(TRIM(H.OBSERVACIONES)) = :IdRep");
                     parameters.Add("IdRep", idRep.Value, DbType.Int32);
                 }
 
@@ -61,7 +62,8 @@ namespace SeguridadSocialApi.Repositories
                                     H.IDESTADO,
                                     E.DESCRIPCION AS ESTADO,
                                     H.FECHAALTA,
-                                    H.CANTIDADREG
+                                    H.CANTIDADREG,
+                                    TO_NUMBER(TRIM(H.OBSERVACIONES)) AS IDREP
                              FROM USUARIO.HOJA H
                              INNER JOIN USUARIO.ESTADO E ON H.IDESTADO = E.IDESTADO
                              INNER JOIN USUARIO.TABTIPOLIQUIDACION TL ON TL.IDTIPOLIQUIDACION = H.IDTIPOLIQUIDACION
@@ -156,3 +158,4 @@ namespace SeguridadSocialApi.Repositories
         }
     }
 }
+

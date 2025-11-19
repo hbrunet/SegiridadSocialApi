@@ -12,5 +12,6 @@ namespace SeguridadSocialApi.Services.DTOs
         public string? Estado { get; set; }
         public DateTime? FechaAlta { get; set; }
         public int CantidadReg { get; set; }
+        public int? IdRep { get; set; }
     }
 }

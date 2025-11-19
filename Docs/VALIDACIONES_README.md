@@ -110,7 +110,7 @@ public async Task ValidarCuilDuplicado_DebeDetectarDuplicados()
 
 ---
 
-## ?? Reglas Implementadas (9)
+## ?? Reglas Implementadas (10)
 
 | # | Regla | Tipo | Orden | Descripción |
 |---|-------|------|-------|-------------|
@@ -121,8 +121,9 @@ public async Task ValidarCuilDuplicado_DebeDetectarDuplicados()
 | 5 | `TIPO_EMPRESA_VALIDO` | Error | 16 | Valida que TIPOEMPRESA sea '3' o 'G' |
 | 6 | `CODIGO_CONDICION_VALIDO` | Error | 17 | Valida que CODCONDICION sea 1, 2 o 5 |
 | 7 | `REMUNERACION_POSITIVA` | Error | 20 | Valida que remuneraciones sean >= 0 |
-| 8 | `RANGOS_CAMPOS` | Advertencia | 25 | Valida rangos de campos numéricos (hijos, horas, días) |
-| 9 | `CONSISTENCIA_CAMPOS` | Advertencia | 30 | Valida consistencia lógica entre campos relacionados |
+| 8 | `OBRA_SOCIAL_NACIONAL_REQUERIDA` | Error | 21 | Para actividades 46 y 77, REMUNIMPONIBLE4 debe ser > 0 |
+| 9 | `RANGOS_CAMPOS` | Advertencia | 25 | Valida rangos de campos numéricos (hijos, horas, días) |
+| 10 | `CONSISTENCIA_CAMPOS` | Advertencia | 30 | Valida consistencia lógica entre campos relacionados |
 
 ---
 

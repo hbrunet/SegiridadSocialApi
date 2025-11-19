@@ -26,9 +26,9 @@ long idArchivo)
 
             // Validar CODACTIVIDAD nulo
             var codigoActividadNulo = await connection.QueryAsync<RegistroError>(@"
-    SELECT ROWNUM AS Linea, CUIL, CODACTIVIDAD
+    SELECT ID AS Linea, CUIL, CODACTIVIDAD
     FROM USUARIO.TMP_NOV_DDJJ_PREV
-   WHERE CODACTIVIDAD IS NULL");
+WHERE CODACTIVIDAD IS NULL");
 
             errores.AddRange(codigoActividadNulo.Select(r => CrearDetalle(
           mensaje: $"CUIL {r.Cuil}: CODACTIVIDAD es obligatorio y no puede ser nulo",
@@ -38,7 +38,7 @@ long idArchivo)
 
             // Validar CODACTIVIDAD con valor no permitido
             var codigoActividadInvalido = await connection.QueryAsync<RegistroError>(@"
-   SELECT ROWNUM AS Linea, CUIL, CODACTIVIDAD
+   SELECT ID AS Linea, CUIL, CODACTIVIDAD
        FROM USUARIO.TMP_NOV_DDJJ_PREV
        WHERE CODACTIVIDAD IS NOT NULL
           AND CODACTIVIDAD NOT IN (19, 32, 46, 52, 65, 76, 77, 85, 913)");

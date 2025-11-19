@@ -26,7 +26,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CANTHIJOS (cantidad de hijos razonable: 0-20)
             var hijosInvalidos = await connection.QueryAsync<RegistroError>(@"
-                SELECT ROWNUM AS Linea, CUIL, CANTHIJOS
+                SELECT ID AS Linea, CUIL, CANTHIJOS
   FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE CANTHIJOS IS NOT NULL AND (CANTHIJOS < 0 OR CANTHIJOS > 20)");
 
@@ -38,7 +38,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CANTADHERENTES (cantidad de adherentes razonable: 0-10)
             var adherentesInvalidos = await connection.QueryAsync<RegistroError>(@"
-   SELECT ROWNUM AS Linea, CUIL, CANTADHERENTES
+   SELECT ID AS Linea, CUIL, CANTADHERENTES
        FROM USUARIO.TMP_NOV_DDJJ_PREV
  WHERE CANTADHERENTES IS NOT NULL AND (CANTADHERENTES < 0 OR CANTADHERENTES > 10)");
 
@@ -50,7 +50,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CANT_DIAS_TRABA (días trabajados en el mes: 0-31)
             var diasInvalidos = await connection.QueryAsync<RegistroError>(@"
-   SELECT ROWNUM AS Linea, CUIL, CANT_DIAS_TRABA
+   SELECT ID AS Linea, CUIL, CANT_DIAS_TRABA
            FROM USUARIO.TMP_NOV_DDJJ_PREV
     WHERE CANT_DIAS_TRABA IS NOT NULL AND (CANT_DIAS_TRABA < 0 OR CANT_DIAS_TRABA > 31)");
 
@@ -62,7 +62,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CANTHORASEXTRA (horas extra razonables: 0-200)
             var horasExtraInvalidas = await connection.QueryAsync<RegistroError>(@"
-   SELECT ROWNUM AS Linea, CUIL, CANTHORASEXTRA
+   SELECT ID AS Linea, CUIL, CANTHORASEXTRA
         FROM USUARIO.TMP_NOV_DDJJ_PREV
         WHERE CANTHORASEXTRA IS NOT NULL AND (CANTHORASEXTRA < 0 OR CANTHORASEXTRA > 200)");
 
@@ -74,7 +74,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar HORASTRAB (horas trabajadas mensuales: 0-400)
             var horasTrabInvalidas = await connection.QueryAsync<RegistroError>(@"
-     SELECT ROWNUM AS Linea, CUIL, HORASTRAB
+     SELECT ID AS Linea, CUIL, HORASTRAB
     FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE HORASTRAB IS NOT NULL AND (HORASTRAB < 0 OR HORASTRAB > 400)");
 

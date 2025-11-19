@@ -26,7 +26,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar: Si tiene cónyuge pero 0 hijos (puede ser válido pero inusual)
             var conyugeSinHijos = await connection.QueryAsync<RegistroError>(@"
-    SELECT ROWNUM AS Linea, CUIL, CONYUGE, CANTHIJOS
+    SELECT ID AS Linea, CUIL, CONYUGE, CANTHIJOS
       FROM USUARIO.TMP_NOV_DDJJ_PREV
     WHERE CONYUGE = 'S' 
         AND (CANTHIJOS IS NULL OR CANTHIJOS = 0)");
@@ -39,7 +39,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar: REMUNTOTAL debería ser >= suma de remuneraciones imponibles
             //           var remuneracionesInconsistentes = await connection.QueryAsync<RegistroError>(@"
-            //     SELECT ROWNUM AS Linea, CUIL, REMUNTOTAL,
+            //     SELECT ID AS Linea, CUIL, REMUNTOTAL,
             //(NVL(REMUNIMPONIBLE1,0) + NVL(REMUNIMPONIBLE2,0) + NVL(REMUNIMPONIBLE3,0)) AS SumaImponibles
             //  FROM USUARIO.TMP_NOV_DDJJ_PREV
             //WHERE REMUNTOTAL IS NOT NULL
@@ -53,9 +53,9 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar: Si tiene ASIGFAMPAGADAS > 0 debe tener CANTHIJOS > 0
             var asigFamSinHijos = await connection.QueryAsync<RegistroError>(@"
-        SELECT ROWNUM AS Linea, CUIL, ASIGFAMPAGADAS, CANTHIJOS
-       FROM USUARIO.TMP_NOV_DDJJ_PREV
-     WHERE ASIGFAMPAGADAS > 0 
+        SELECT ID AS Linea, CUIL, ASIGFAMPAGADAS, CANTHIJOS
+ FROM USUARIO.TMP_NOV_DDJJ_PREV
+   WHERE ASIGFAMPAGADAS > 0 
    AND (CANTHIJOS IS NULL OR CANTHIJOS = 0)");
 
             advertencias.AddRange(asigFamSinHijos.Select(r => CrearDetalle(
@@ -66,7 +66,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar: CANT_DIAS_TRABA = 0 pero tiene remuneraciones
             var sinDiasConRemun = await connection.QueryAsync<RegistroError>(@"
-     SELECT ROWNUM AS Linea, CUIL, CANT_DIAS_TRABA
+     SELECT ID AS Linea, CUIL, CANT_DIAS_TRABA
          FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE (CANT_DIAS_TRABA IS NULL OR CANT_DIAS_TRABA = 0)
     AND (NVL(REMUNIMPONIBLE1,0) + NVL(REMUNIMPONIBLE2,0) + NVL(REMUNIMPONIBLE3,0)) > 0");
@@ -79,7 +79,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar: HORAS_EXTRA > 0 pero CANTHORASEXTRA = 0
             var horasExtraInconsistentes = await connection.QueryAsync<RegistroError>(@"
-     SELECT ROWNUM AS Linea, CUIL, HORAS_EXTRA, CANTHORASEXTRA
+   SELECT ID AS Linea, CUIL, HORAS_EXTRA, CANTHORASEXTRA
     FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE HORAS_EXTRA > 0 
   AND (CANTHORASEXTRA IS NULL OR CANTHORASEXTRA = 0)");

@@ -1,4 +1,6 @@
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
+using SeguridadSocialApi.Services.Options;
 using SeguridadSocialApi.Repositories;
 using SeguridadSocialApi.Validaciones;
 using SeguridadSocialApi.Validaciones.Rules;
@@ -51,6 +53,14 @@ namespace SeguridadSocialApi
             services.AddMemoryCache();
             services.AddSingleton<IOracleConnectionFactory, OracleConnectionFactory>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Configurar Options Pattern
+            services.Configure<FileUploadOptions>(Configuration.GetSection(FileUploadOptions.SectionName));
+
+            // Servicios de archivo
+            services.AddScoped<IFileStorageService, FileStorageService>();
+            services.AddScoped<IFileNormalizationService, FileNormalizationService>();
+
             // Repositorios y servicios refactorizados
             services.AddScoped<IHojaRepository, HojaRepository>();
             services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
@@ -67,6 +77,7 @@ namespace SeguridadSocialApi
             services.AddScoped<IValidacionRule, ValidarTipoEmpresaRule>();
             services.AddScoped<IValidacionRule, ValidarCodigoCondicionRule>();
             services.AddScoped<IValidacionRule, ValidarRemuneracionPositivaRule>();
+            services.AddScoped<IValidacionRule, ValidarObraSocialNacionalRule>();
             services.AddScoped<IValidacionRule, ValidarRangosCamposRule>();
             services.AddScoped<IValidacionRule, ValidarConsistenciaCamposRule>();
             // TODO: Agregar más reglas según necesidades específicas de negocio

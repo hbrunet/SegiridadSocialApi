@@ -110,10 +110,11 @@ Creadas **3 nuevas reglas** basadas en la **estructura real de la GTT**:
 | 5 | TIPO_EMPRESA_VALIDO | Error | Valida que TIPOEMPRESA sea '3' o 'G' |
 | 6 | CODIGO_CONDICION_VALIDO | Error | Valida que CODCONDICION sea 1, 2 o 5 |
 | 7 | REMUNERACION_POSITIVA | Error | Valores >= 0 |
-| 8 | RANGOS_CAMPOS | Advertencia | Rangos numéricos razonables |
-| 9 | CONSISTENCIA_CAMPOS | Advertencia | Consistencia lógica |
+| 8 | OBRA_SOCIAL_NACIONAL_REQUERIDA | Error | Actividades 46/77 requieren REMUNIMPONIBLE4 > 0 |
+| 9 | RANGOS_CAMPOS | Advertencia | Rangos numéricos razonables |
+| 10 | CONSISTENCIA_CAMPOS | Advertencia | Consistencia lógica |
 
-**Reglas funcionales:** 9 de 9 (100%) ?
+**Reglas funcionales:** 10 de 10 (100%) ?
 
 ---
 

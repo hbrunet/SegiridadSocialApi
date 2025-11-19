@@ -24,10 +24,10 @@ namespace SeguridadSocialApi.Validaciones.Rules
         {
             var sql = @"
     SELECT 
-    ROWNUM AS Linea,
+ ID AS Linea,
        CUIL
       FROM USUARIO.TMP_NOV_DDJJ_PREV
-    WHERE CUIL IS NULL
+  WHERE CUIL IS NULL
    OR LENGTH(CUIL) != 11
      OR REGEXP_LIKE(CUIL, '[^0-9]')";
 

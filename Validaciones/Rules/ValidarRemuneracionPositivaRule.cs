@@ -24,17 +24,17 @@ namespace SeguridadSocialApi.Validaciones.Rules
         {
             var sql = @"
     SELECT 
-       ROWNUM AS Linea,
+       ID AS Linea,
       CUIL,
-             CASE 
-     WHEN REMUNIMPONIBLE1 < 0 THEN 'REMUNIMPONIBLE1'
-           WHEN REMUNIMPONIBLE2 < 0 THEN 'REMUNIMPONIBLE2'
+      CASE 
+   WHEN REMUNIMPONIBLE1 < 0 THEN 'REMUNIMPONIBLE1'
+        WHEN REMUNIMPONIBLE2 < 0 THEN 'REMUNIMPONIBLE2'
   WHEN REMUNIMPONIBLE3 < 0 THEN 'REMUNIMPONIBLE3'
       END AS Columna,
         CASE 
         WHEN REMUNIMPONIBLE1 < 0 THEN REMUNIMPONIBLE1
     WHEN REMUNIMPONIBLE2 < 0 THEN REMUNIMPONIBLE2
-      WHEN REMUNIMPONIBLE3 < 0 THEN REMUNIMPONIBLE3
+    WHEN REMUNIMPONIBLE3 < 0 THEN REMUNIMPONIBLE3
           END AS ValorNegativo
     FROM USUARIO.TMP_NOV_DDJJ_PREV
      WHERE REMUNIMPONIBLE1 < 0 
@@ -44,10 +44,10 @@ namespace SeguridadSocialApi.Validaciones.Rules
             var errores = await connection.QueryAsync<RemuneracionNegativa>(sql);
 
             return errores.Select(e => CrearDetalle(
-    mensaje: $"CUIL {e.Cuil}: {e.Columna} tiene valor negativo ({e.ValorNegativo})",
-     linea: e.Linea,
- columna: ObtenerNumeroColumna(e.Columna)
-     )).ToList();
+        mensaje: $"CUIL {e.Cuil}: {e.Columna} tiene valor negativo ({e.ValorNegativo})",
+         linea: e.Linea,
+     columna: ObtenerNumeroColumna(e.Columna)
+         )).ToList();
         }
 
         private int ObtenerNumeroColumna(string nombreColumna)

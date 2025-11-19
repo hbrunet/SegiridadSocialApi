@@ -26,7 +26,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
    SELECT 
            CUIL,
             COUNT(*) AS Cantidad,
-            MIN(ROWNUM) AS PrimeraLinea
+            MIN(ID) AS PrimeraLinea
      FROM USUARIO.TMP_NOV_DDJJ_PREV
           WHERE CUIL IS NOT NULL
       GROUP BY CUIL

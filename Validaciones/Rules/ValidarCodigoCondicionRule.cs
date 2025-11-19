@@ -12,7 +12,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
         public override string NombreRegla => "CODIGO_CONDICION_VALIDO";
 
         public override string Descripcion =>
-         "Verifica que CODCONDICION tenga uno de los valores permitidos: 1, 2, 5";
+         "Verifica que CODCONDICION tenga uno de los valores permitidos: 1, 2, 5, 14";
 
         public override TipoValidacion Tipo => TipoValidacion.Error;
 
@@ -26,7 +26,7 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CODCONDICION nulo
             var codigoCondicionNulo = await connection.QueryAsync<RegistroError>(@"
-      SELECT ROWNUM AS Linea, CUIL, CODCONDICION
+      SELECT ID AS Linea, CUIL, CODCONDICION
         FROM USUARIO.TMP_NOV_DDJJ_PREV
            WHERE CODCONDICION IS NULL");
 
@@ -38,13 +38,13 @@ namespace SeguridadSocialApi.Validaciones.Rules
 
             // Validar CODCONDICION con valor no permitido
             var codigoCondicionInvalido = await connection.QueryAsync<RegistroError>(@"
-             SELECT ROWNUM AS Linea, CUIL, CODCONDICION
+             SELECT ID AS Linea, CUIL, CODCONDICION
                 FROM USUARIO.TMP_NOV_DDJJ_PREV
                 WHERE CODCONDICION IS NOT NULL
-        AND CODCONDICION NOT IN (1, 2, 5)");
+        AND CODCONDICION NOT IN (1, 2, 5, 14)");
 
             errores.AddRange(codigoCondicionInvalido.Select(r => CrearDetalle(
-            mensaje: $"CUIL {r.Cuil}: CODCONDICION = {r.CodCondicion} no es válido (valores permitidos: 1, 2, 5)",
+            mensaje: $"CUIL {r.Cuil}: CODCONDICION = {r.CodCondicion} no es válido (valores permitidos: 1, 2, 5, 14)",
             linea: r.Linea,
                 columna: 7
             )));

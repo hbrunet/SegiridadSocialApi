@@ -1,4 +1,5 @@
 using System.Data;
+using SeguridadSocialApi.Services.Interfaces;
 
 namespace SeguridadSocialApi.Services
 {
@@ -109,3 +110,4 @@ namespace SeguridadSocialApi.Services
         }
     }
 }
+

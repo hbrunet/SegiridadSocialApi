@@ -1,5 +1,6 @@
 using Dapper;
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
 using SeguridadSocialApi.Services.DTOs;
 
 namespace SeguridadSocialApi.Repositories
@@ -97,3 +98,4 @@ namespace SeguridadSocialApi.Repositories
         }
     }
 }
+

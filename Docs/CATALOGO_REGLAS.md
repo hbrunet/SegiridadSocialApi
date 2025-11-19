@@ -2,9 +2,9 @@
 
 ## ?? Resumen Ejecutivo
 
-**Total de reglas:** 9  
-**Reglas de Error:** 7  
-**Reglas de Advertencia:** 2  
+**Total de reglas:** 11  
+**Reglas de Error:** 8  
+**Reglas de Advertencia:** 3  
 **Cobertura:** 100% funcional
 
 ---
@@ -258,7 +258,44 @@ WHERE CODCONDICION IS NOT NULL
 
 ---
 
-### 7. REMUNERACION_POSITIVA
+### 7. OBRA_SOCIAL_NACIONAL_REQUERIDA
+**Orden:** 21  
+**Archivo:** `ValidarObraSocialNacionalRule.cs`
+
+**Descripción:** Verifica que para las actividades 46 y 77 exista importe de obra social nacional
+
+**Actividades que requieren validación:** `46, 77`
+
+**Validaciones:**
+- ? Para CODACTIVIDAD 46: REMUNIMPONIBLE4 > 0
+- ? Para CODACTIVIDAD 77: REMUNIMPONIBLE4 > 0
+
+**Query SQL:**
+```sql
+SELECT ROWNUM AS Linea, 
+       CUIL, 
+       CODACTIVIDAD,
+       NVL(REMUNIMPONIBLE4, 0) AS RemunImponible4
+FROM USUARIO.TMP_NOV_DDJJ_PREV
+WHERE CODACTIVIDAD IN (46, 77)
+  AND (REMUNIMPONIBLE4 IS NULL OR REMUNIMPONIBLE4 <= 0);
+```
+
+**Ejemplo de error:**
+```json
+{
+  "mensaje": "[OBRA_SOCIAL_NACIONAL_REQUERIDA] CUIL 20123456789: CODACTIVIDAD 46 requiere REMUNIMPONIBLE4 (Obra Social Nacional) con valor positivo (actual: 0)",
+  "linea": 35,
+  "columna": 24
+}
+```
+
+**Explicación:**  
+Las actividades 46 y 77 corresponden a trabajadores que deben estar afiliados obligatoriamente a una Obra Social Nacional, por lo que deben tener un aporte registrado en REMUNIMPONIBLE4.
+
+---
+
+### 8. REMUNERACION_POSITIVA
 **Orden:** 20  
 **Archivo:** `ValidarRemuneracionPositivaRule.cs`
 
@@ -301,7 +338,7 @@ WHERE REMUNIMPONIBLE1 < 0
 
 ---
 
-### 8. ASIGNACION_FAMILIAR_VALIDA
+### 9. ASIGNACION_FAMILIAR_VALIDA
 **Orden:** 25  
 **Archivo:** `ValidarAsignacionFamiliarRule.cs`
 
@@ -345,7 +382,7 @@ WHERE ASIGFAMPAGADAS > 0
 
 ## ?? Reglas de Advertencia (No críticas)
 
-### 9. RANGOS_CAMPOS
+### 10. RANGOS_CAMPOS
 **Orden:** 30  
 **Archivo:** `ValidarRangosCamposRule.cs`
 
@@ -385,7 +422,7 @@ WHERE CANTHIJOS IS NOT NULL
 
 ---
 
-### 10. CONSISTENCIA_CAMPOS
+### 11. CONSISTENCIA_CAMPOS
 **Orden:** 35  
 **Archivo:** `ValidarConsistenciaCamposRule.cs`
 
@@ -441,9 +478,11 @@ WHERE ASIGFAMPAGADAS > 0
    ?
 7. REMUNERACION_POSITIVA (Orden: 20)
    ?
-8. RANGOS_CAMPOS (Orden: 25)
+8. OBRA_SOCIAL_NACIONAL_REQUERIDA (Orden: 21)
    ?
-9. CONSISTENCIA_CAMPOS (Orden: 35)
+9. RANGOS_CAMPOS (Orden: 25)
+   ?
+10. CONSISTENCIA_CAMPOS (Orden: 30)
 ```
 
 ---
@@ -459,7 +498,7 @@ GET /api/novedades/reglas-validacion
 **Respuesta:**
 ```json
 {
-  "total": 9,
+  "total": 11,
   "reglas": [
     {
       "nombre": "FORMATO_CUIL",
@@ -562,9 +601,9 @@ services.AddScoped<IValidacionRule, MiNuevaReglaRule>();
 
 | Tipo | Cantidad | Porcentaje |
 |------|----------|------------|
-| **Errores** | 7 | 78% |
-| **Advertencias** | 2 | 22% |
-| **Total** | 9 | 100% |
+| **Errores** | 8 | 80% |
+| **Advertencias** | 2 | 20% |
+| **Total** | 10 | 100% |
 
 ---
 
@@ -582,6 +621,7 @@ services.AddScoped<IValidacionRule, MiNuevaReglaRule>();
 
 ### Remuneraciones
 - ? REMUNIMPONIBLE1-11 (>= 0, al menos una > 0)
+- ? REMUNIMPONIBLE4 (> 0 para actividades 46 y 77 - Obra Social Nacional)
 
 ### Cantidades
 - ?? CANTHIJOS (rango: 0-20)

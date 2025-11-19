@@ -105,6 +105,11 @@ true
         "mensaje": "[CODIGO_CONDICION_VALIDO] CUIL 20123456789: CODCONDICION = 3 no es válido (valores permitidos: 1, 2, 5)",
         "linea": 18,
         "columna": 7
+      },
+      {
+        "mensaje": "[OBRA_SOCIAL_NACIONAL_REQUERIDA] CUIL 20123456789: CODACTIVIDAD 46 requiere REMUNIMPONIBLE4 (Obra Social Nacional) con valor positivo (actual: 0)",
+        "linea": 35,
+        "columna": 24
       }
     ],
     "advertencias": [
@@ -506,6 +511,15 @@ POST /api/novedades/crear-hoja
   "mensaje": "[TIPO_EMPRESA_VALIDO] CUIL 20123456789: TIPOEMPRESA = 'X' no es válido (valores permitidos: '3', 'G')",
   "linea": 30,
   "columna": 38
+}
+```
+
+### OBRA_SOCIAL_NACIONAL_REQUERIDA
+```json
+{
+  "mensaje": "[OBRA_SOCIAL_NACIONAL_REQUERIDA] CUIL 20123456789: CODACTIVIDAD 46 requiere REMUNIMPONIBLE4 (Obra Social Nacional) con valor positivo (actual: 0)",
+  "linea": 35,
+  "columna": 24
 }
 ```
 

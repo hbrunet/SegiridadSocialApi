@@ -1,16 +1,14 @@
-# ?? Resumen de Reglas de Validación Implementadas
+# ?? Resumen Ejecutivo
 
-## ? Estado Actual del Sistema
-
-**Fecha de actualización:** $(Get-Date -Format "yyyy-MM-dd")  
-**Total de reglas:** 9  
-**Reglas de Error (críticas):** 7 (78%)  
-**Reglas de Advertencia:** 2 (22%)  
+**Fecha de actualización:** Hoy  
+**Total de reglas:** 10  
+**Reglas de Error (críticas):** 8 (80%)  
+**Reglas de Advertencia:** 2 (20%)  
 **Cobertura funcional:** 100%
 
 ---
 
-## ?? Reglas de Error Implementadas (7)
+## ?? Reglas de Error Implementadas (8)
 
 ### 1. FORMATO_CUIL
 - **Orden:** 5
@@ -54,11 +52,17 @@
 - **Campos:** REMUNIMPONIBLE1-11
 - **Columnas:** 15-25
 
+### 8. OBRA_SOCIAL_NACIONAL_REQUERIDA ? NUEVA
+- **Orden:** 21
+- **Validaciones:** Para CODACTIVIDAD 46 y 77, REMUNIMPONIBLE4 > 0
+- **Campo:** REMUNIMPONIBLE4 (Obra Social Nacional)
+- **Columna:** 24
+
 ---
 
 ## ?? Reglas de Advertencia Implementadas (2)
 
-### 8. RANGOS_CAMPOS
+### 9. RANGOS_CAMPOS
 - **Orden:** 25
 - **Validaciones:**
   - CANTHIJOS: 0-20
@@ -67,7 +71,7 @@
   - CANTHORASEXTRA: 0-200
   - HORASTRAB: 0-400
 
-### 9. CONSISTENCIA_CAMPOS
+### 10. CONSISTENCIA_CAMPOS
 - **Orden:** 30
 - **Validaciones:**
   - Cónyuge vs Hijos
@@ -193,6 +197,15 @@ graph TD
 
 ## ?? Ejemplos de Errores por Regla
 
+### OBRA_SOCIAL_NACIONAL_REQUERIDA ? NUEVO
+```json
+{
+  "mensaje": "[OBRA_SOCIAL_NACIONAL_REQUERIDA] CUIL 20123456789: CODACTIVIDAD 46 requiere REMUNIMPONIBLE4 (Obra Social Nacional) con valor positivo (actual: 0)",
+  "linea": 35,
+  "columna": 24
+}
+```
+
 ### CODIGO_CONDICION_VALIDO ? NUEVO
 ```json
 {
@@ -233,14 +246,14 @@ curl http://localhost:5000/api/novedades/reglas-validacion | jq .
 **Respuesta esperada:**
 ```json
 {
-  "total": 9,
+  "total": 10,
   "reglas": [
     {
       "nombre": "FORMATO_CUIL",
       "orden": 5,
       "tipo": "Error"
     },
-    // ... 8 reglas más
+    // ... 9 reglas más
     {
       "nombre": "CODIGO_CONDICION_VALIDO",
       "orden": 17,
@@ -305,21 +318,23 @@ curl -X POST "http://localhost:5000/api/novedades/validar-archivo/12345?flowId=a
 
 ## ? Cambios Recientes
 
-### Última Actualización: CODIGO_CONDICION_VALIDO
+### Última Actualización: OBRA_SOCIAL_NACIONAL_REQUERIDA
 
 **Fecha:** Hoy  
 **Tipo:** Nueva regla de error  
-**Orden:** 17  
-**Campo:** CODCONDICION  
-**Valores permitidos:** 1, 2, 5
+**Orden:** 21  
+**Campo:** REMUNIMPONIBLE4 (Obra Social Nacional)  
+**Actividades:** 46, 77  
+**Validación:** REMUNIMPONIBLE4 > 0
 
 **Archivos modificados:**
-- ? Creado: `Validaciones/Rules/ValidarCodigoCondicionRule.cs`
+- ? Creado: `Validaciones/Rules/ValidarObraSocialNacionalRule.cs`
 - ?? Actualizado: `Startup.cs`
 - ?? Actualizado: `Validaciones/README.md`
 - ?? Actualizado: `Validaciones/CORRECCION_GTT.md`
 - ?? Actualizado: `Validaciones/EJEMPLOS_API.md`
 - ?? Actualizado: `Validaciones/CATALOGO_REGLAS.md`
+- ?? Actualizado: `Validaciones/ESTADO_ACTUAL.md`
 
 ---
 
@@ -332,4 +347,4 @@ curl -X POST "http://localhost:5000/api/novedades/validar-archivo/12345?flowId=a
 
 ---
 
-**? Sistema de validaciones en producción con 9 reglas activas**
+**? Sistema de validaciones en producción con 10 reglas activas**
