@@ -1,6 +1,7 @@
 using Dapper;
 using System.Data;
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
 using SeguridadSocialApi.Services.DTOs;
 
 namespace SeguridadSocialApi.Repositories
@@ -41,7 +42,7 @@ namespace SeguridadSocialApi.Repositories
 
                 if (idRep.HasValue)
                 {
-                    whereConditions.Add("TRIM(H.OBSERVACIONES) = TO_CHAR(:IdRep)");
+                    whereConditions.Add("TO_NUMBER(TRIM(H.OBSERVACIONES)) = :IdRep");
                     parameters.Add("IdRep", idRep.Value, DbType.Int32);
                 }
 
@@ -52,7 +53,8 @@ namespace SeguridadSocialApi.Repositories
                 var totalRegistros = await _unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
 
                 // Luego obtener los registros paginados
-                var sql = $@"SELECT MOD(h.ID,10000) as NROHOJA,
+                var sql = $@"SELECT h.ID,
+                                    MOD(h.ID,10000) as NROHOJA,
                                     H.PERIODO,
                                     H.IDTIPOLIQUIDACION,
                                     TL.DESCRIPCION AS TIPOLIQUIDACION,
@@ -60,7 +62,8 @@ namespace SeguridadSocialApi.Repositories
                                     H.IDESTADO,
                                     E.DESCRIPCION AS ESTADO,
                                     H.FECHAALTA,
-                                    H.CANTIDADREG
+                                    H.CANTIDADREG,
+                                    TO_NUMBER(TRIM(H.OBSERVACIONES)) AS IDREP
                              FROM USUARIO.HOJA H
                              INNER JOIN USUARIO.ESTADO E ON H.IDESTADO = E.IDESTADO
                              INNER JOIN USUARIO.TABTIPOLIQUIDACION TL ON TL.IDTIPOLIQUIDACION = H.IDTIPOLIQUIDACION
@@ -117,5 +120,42 @@ namespace SeguridadSocialApi.Repositories
                 throw new ApplicationException($"Error al crear hoja: {ex.Message}");
             }
         }
+
+        public async Task ProcesarHojaAsync(int nroHoja)
+        {
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("vNROHOJA", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+                await _unitOfWork.Connection.ExecuteAsync(
+                    "SEGSOCIAL.DDJJ_MENSUAL.CARGA_DDJJ_MENSUAL_REP",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Error al procesar hoja {nroHoja}: {ex.Message}");
+            }
+        }
+
+        public async Task AnularHojaAsync(int nroHoja)
+        {
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("vNrohoja", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+                await _unitOfWork.Connection.ExecuteAsync(
+                    "USUARIO.WORKFLOW.hoja_anular",
+                    parameters,
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Error al anular hoja {nroHoja}: {ex.Message}");
+            }
+        }
     }
 }
+

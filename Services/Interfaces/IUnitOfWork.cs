@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace SeguridadSocialApi.Services
+namespace SeguridadSocialApi.Services.Interfaces
 {
     public interface IUnitOfWork : IDisposable
     {

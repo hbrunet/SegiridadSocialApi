@@ -1,16 +1,10 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Oracle.ManagedDataAccess.Client;
+using SeguridadSocialApi.Services.Interfaces;
 
 namespace SeguridadSocialApi.Services
 {
-    public interface IFlowSessionManager
-    {
-        Task<string> StartAsync();
-        OracleConnection? GetConnection(string flowId);
-        Task EndAsync(string flowId);
-    }
-
     internal sealed class FlowSession
     {
         public required OracleConnection Connection { get; init; }

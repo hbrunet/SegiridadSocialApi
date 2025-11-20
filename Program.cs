@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using System.Text;
 
 namespace SeguridadSocialApi
 {
@@ -8,6 +9,9 @@ namespace SeguridadSocialApi
     {
         public static void Main(string[] args)
         {
+            // Registrar proveedores de encoding para soportar Windows-1252 (ANSI)
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             // Configurar Serilog
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
@@ -21,6 +25,7 @@ namespace SeguridadSocialApi
             try
             {
                 Log.Information("Iniciando aplicación SeguridadSocialApi");
+                Log.Information("Proveedor de encodings registrado - Soporta Windows-1252, ISO-8859-1, etc.");
                 CreateHostBuilder(args).Build().Run();
             }
             catch (Exception ex)
@@ -40,9 +45,9 @@ namespace SeguridadSocialApi
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                    
+
                     // Configurar URLs desde variables de entorno o usar valores por defecto
-                    var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
+                    var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
                                ?? "https://localhost:5001;http://localhost:5000";
                     webBuilder.UseUrls(urls);
                 });

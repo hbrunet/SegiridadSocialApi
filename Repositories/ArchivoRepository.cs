@@ -1,17 +1,26 @@
 using Dapper;
 using System.Data;
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
 using SeguridadSocialApi.Services.DTOs;
+using SeguridadSocialApi.Validaciones;
 
 namespace SeguridadSocialApi.Repositories
 {
     public class ArchivoRepository : IArchivoRepository
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ValidacionExecutor _validacionExecutor;
+        private readonly IFlowSessionManager _flowSessionManager;
 
-        public ArchivoRepository(IUnitOfWork unitOfWork)
+        public ArchivoRepository(
+       IUnitOfWork unitOfWork,
+   ValidacionExecutor validacionExecutor,
+  IFlowSessionManager flowSessionManager)
         {
             _unitOfWork = unitOfWork;
+            _validacionExecutor = validacionExecutor;
+            _flowSessionManager = flowSessionManager;
         }
 
         public async Task<long> GetNextArchivoSeqAsync()
@@ -65,7 +74,7 @@ namespace SeguridadSocialApi.Repositories
 
                 await Task.WhenAll(archivoInfoTask, sumaRemuneracionesTask);
 
-                return (archivoInfoTask.Result ?? new ArchivoInfoDto(), 
+                return (archivoInfoTask.Result ?? new ArchivoInfoDto(),
                         sumaRemuneracionesTask.Result ?? new SumaRemuneracionesDto());
             }
             catch (Exception ex)
@@ -73,6 +82,50 @@ namespace SeguridadSocialApi.Repositories
                 throw new ApplicationException($"Error al obtener información de archivo y sumas: {ex.Message}");
             }
         }
+
+        public async Task<ValidacionArchivoDto> ValidarArchivoAsync(long idArchivo, string? flowId = null)
+        {
+            try
+            {
+                IDbConnection connectionToUse = _unitOfWork.Connection;
+
+                // Si viene flowId, usar la conexión fijada para mantener la GTT
+                if (!string.IsNullOrWhiteSpace(flowId))
+                {
+                    var pinnedConnection = _flowSessionManager.GetConnection(flowId);
+                    if (pinnedConnection == null)
+                    {
+                        throw new ApplicationException(
+                    $"El flujo '{flowId}' expiró o es inválido. La tabla temporal no está disponible.");
+                    }
+                    connectionToUse = pinnedConnection;
+                }
+
+                // Obtener total de registros en la tabla temporal
+                var totalRegistros = await connectionToUse.ExecuteScalarAsync<int>(
+                           "SELECT COUNT(*) FROM USUARIO.TMP_NOV_DDJJ_PREV");
+
+                // Si no hay registros y esperábamos encontrar datos
+                if (totalRegistros == 0 && !string.IsNullOrWhiteSpace(flowId))
+                {
+                    throw new ApplicationException(
+                       "No se encontraron registros en la tabla temporal. Verifique que el archivo fue cargado correctamente.");
+                }
+
+                // Ejecutar todas las validaciones usando el executor
+                var resultado = await _validacionExecutor.EjecutarValidacionesAsync(
+                    connectionToUse,
+                     idArchivo,
+                    totalRegistros);
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Error al validar archivo: {ex.Message}");
+            }
+        }
     }
 }
+
 

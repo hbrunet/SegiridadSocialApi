@@ -1,5 +1,9 @@
 using SeguridadSocialApi.Services;
+using SeguridadSocialApi.Services.Interfaces;
+using SeguridadSocialApi.Services.Options;
 using SeguridadSocialApi.Repositories;
+using SeguridadSocialApi.Validaciones;
+using SeguridadSocialApi.Validaciones.Rules;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using FluentValidation;
@@ -27,12 +31,12 @@ namespace SeguridadSocialApi
                         NamingStrategy = new SnakeCaseNamingStrategy()
                     };
                 });
-            
+
             // Agregar FluentValidation
             services.AddFluentValidationAutoValidation();
             services.AddFluentValidationClientsideAdapters();
             services.AddValidatorsFromAssemblyContaining<Startup>();
-            
+
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", builder =>
@@ -49,6 +53,14 @@ namespace SeguridadSocialApi
             services.AddMemoryCache();
             services.AddSingleton<IOracleConnectionFactory, OracleConnectionFactory>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Configurar Options Pattern
+            services.Configure<FileUploadOptions>(Configuration.GetSection(FileUploadOptions.SectionName));
+
+            // Servicios de archivo
+            services.AddScoped<IFileStorageService, FileStorageService>();
+            services.AddScoped<IFileNormalizationService, FileNormalizationService>();
+
             // Repositorios y servicios refactorizados
             services.AddScoped<IHojaRepository, HojaRepository>();
             services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
@@ -58,6 +70,26 @@ namespace SeguridadSocialApi
             services.AddSingleton<IFlowSessionManager, FlowSessionManager>();
             services.AddScoped<FtpService>();
             services.AddScoped<NovedadesService>();
+
+            // Registrar todas las reglas de validación
+            services.AddScoped<IValidacionRule, ValidarFormatoCuilRule>();
+            services.AddScoped<IValidacionRule, ValidarCamposObligatoriosGttRule>();
+            services.AddScoped<IValidacionRule, ValidarCuilDuplicadoRule>();
+            services.AddScoped<IValidacionRule, ValidarCodigoActividadRule>();
+            services.AddScoped<IValidacionRule, ValidarTipoEmpresaRule>();
+            services.AddScoped<IValidacionRule, ValidarCodigoCondicionRule>();
+            services.AddScoped<IValidacionRule, ValidarRemuneracionPositivaRule>();
+            services.AddScoped<IValidacionRule, ValidarObraSocialNacionalRule>();
+            services.AddScoped<IValidacionRule, ValidarRangosCamposRule>();
+            services.AddScoped<IValidacionRule, ValidarConsistenciaCamposRule>();
+            // TODO: Agregar más reglas según necesidades específicas de negocio
+
+            // Registrar el ejecutor de validaciones
+            services.AddScoped<ValidacionExecutor>(provider =>
+            {
+                var reglas = provider.GetServices<IValidacionRule>();
+                return new ValidacionExecutor(reglas);
+            });
             
             // Background Jobs para SPs de larga duración
             services.AddSingleton<IJobManager, JobManager>();

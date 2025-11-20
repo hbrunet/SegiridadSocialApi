@@ -1,4 +1,5 @@
 using System.Data;
+using SeguridadSocialApi.Services.Interfaces;
 
 namespace SeguridadSocialApi.Services
 {
@@ -23,14 +24,14 @@ namespace SeguridadSocialApi.Services
                 {
                     _connection = _connectionFactory.CreateConnection();
                 }
-                
+
                 // Abrir la conexión si no está abierta para mantener la misma sesión
                 // Esto es crítico para tablas temporales de Oracle (datos por sesión)
                 if (_connection.State != ConnectionState.Open)
                 {
                     _connection.Open();
                 }
-                
+
                 return _connection;
             }
         }
@@ -109,3 +110,4 @@ namespace SeguridadSocialApi.Services
         }
     }
 }
+
