@@ -1,55 +1,62 @@
+// <copyright file="ValidarCamposObligatoriosGttRule.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
+using System.Data;
 using Dapper;
 using SeguridadSocialApi.Services.DTOs;
-using System.Data;
 
-namespace SeguridadSocialApi.Validaciones.Rules
+namespace SeguridadSocialApi.Validaciones.Rules;
+
+/// <summary>
+/// Valida que los campos obligatorios de la GTT no est√©n vac√≠os o nulos.
+/// </summary>
+public class ValidarCamposObligatoriosGttRule : ValidacionRuleBase
 {
-    /// <summary>
-    /// Valida que los campos obligatorios de la GTT no estÈn vacÌos o nulos
-    /// </summary>
-    public class ValidarCamposObligatoriosGttRule : ValidacionRuleBase
+    /// <inheritdoc/>
+    public override string NombreRegla => "CAMPOS_OBLIGATORIOS_GTT";
+
+    /// <inheritdoc/>
+    public override string Descripcion =>
+"Verifica que los campos obligatorios (CUIL, APENOM, Remuneraciones) tengan valores v√°lidos";
+
+    /// <inheritdoc/>
+    public override TipoValidacion Tipo => TipoValidacion.Error;
+
+    /// <inheritdoc/>
+    public override int Orden => 8;
+
+    /// <inheritdoc/>
+    protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
+   IDbConnection connection,
+   long idArchivo)
     {
-        public override string NombreRegla => "CAMPOS_OBLIGATORIOS_GTT";
+        var errores = new List<DetalleValidacionDto>();
 
-        public override string Descripcion =>
-"Verifica que los campos obligatorios (CUIL, APENOM, Remuneraciones) tengan valores v·lidos";
-
-        public override TipoValidacion Tipo => TipoValidacion.Error;
-
-        public override int Orden => 8;
-
-        protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
-       IDbConnection connection,
-     long idArchivo)
-        {
-            var errores = new List<DetalleValidacionDto>();
-
-            // Validar CUIL vacÌo o nulo
-            var cuilVacio = await connection.QueryAsync<RegistroError>(@"
+        // Validar CUIL vac√≠o o nulo
+        var cuilVacio = await connection.QueryAsync<RegistroError>(@"
       SELECT ID AS Linea, CUIL
        FROM USUARIO.TMP_NOV_DDJJ_PREV
          WHERE CUIL IS NULL");
 
-            errores.AddRange(cuilVacio.Select(r => CrearDetalle(
-     mensaje: "CUIL es obligatorio y no puede ser nulo",
-         linea: r.Linea,
-           columna: 2
-       )));
+        errores.AddRange(cuilVacio.Select(r => CrearDetalle(
+ mensaje: "CUIL es obligatorio y no puede ser nulo",
+ linea: r.Linea,
+ columna: 2)));
 
-            // Validar APENOM (Apellido y Nombre) vacÌo
-            var apenomVacio = await connection.QueryAsync<RegistroError>(@"
+        // Validar APENOM (Apellido y Nombre) vac√≠o
+        var apenomVacio = await connection.QueryAsync<RegistroError>(@"
  SELECT ID AS Linea, CUIL
 FROM USUARIO.TMP_NOV_DDJJ_PREV
  WHERE APENOM IS NULL OR TRIM(APENOM) = ''");
 
-            errores.AddRange(apenomVacio.Select(r => CrearDetalle(
-           mensaje: $"CUIL {r.Cuil?.ToString() ?? "N/A"}: APENOM (Apellido y Nombre) es obligatorio",
-  linea: r.Linea,
-        columna: 3
-   )));
+        errores.AddRange(apenomVacio.Select(r => CrearDetalle(
+       mensaje: $"CUIL {r.Cuil?.ToString() ?? "N/A"}: APENOM (Apellido y Nombre) es obligatorio",
+       linea: r.Linea,
+       columna: 3)));
 
-            // Validar que al menos una remuneraciÛn imponible tenga valor > 0
-            var todasRemuneracionesVacias = await connection.QueryAsync<RegistroError>(@"
+        // Validar que al menos una remuneraci√≥n imponible tenga valor > 0
+        var todasRemuneracionesVacias = await connection.QueryAsync<RegistroError>(@"
  SELECT ID AS Linea, CUIL
    FROM USUARIO.TMP_NOV_DDJJ_PREV
   WHERE (REMUNIMPONIBLE1 IS NULL OR REMUNIMPONIBLE1 = 0)
@@ -63,31 +70,29 @@ FROM USUARIO.TMP_NOV_DDJJ_PREV
        AND (REMUNIMPONIBLE9 IS NULL OR REMUNIMPONIBLE9 = 0)
      AND (REMUNIMPONIBLE11 IS NULL OR REMUNIMPONIBLE11 = 0)");
 
-            errores.AddRange(todasRemuneracionesVacias.Select(r => CrearDetalle(
-mensaje: $"CUIL {r.Cuil}: Debe tener al menos una remuneraciÛn imponible con valor > 0",
-  linea: r.Linea,
-    columna: 15
-           )));
+        errores.AddRange(todasRemuneracionesVacias.Select(r => CrearDetalle(
+mensaje: $"CUIL {r.Cuil}: Debe tener al menos una remuneraci√≥n imponible con valor > 0",
+linea: r.Linea,
+columna: 15)));
 
-            // Validar campos de cÛdigos obligatorios
-            var codigosSituacionInvalidos = await connection.QueryAsync<RegistroError>(@"
+        // Validar campos de c√≥digos obligatorios
+        var codigosSituacionInvalidos = await connection.QueryAsync<RegistroError>(@"
     SELECT ID AS Linea, CUIL
            FROM USUARIO.TMP_NOV_DDJJ_PREV
         WHERE CODSITUACION IS NULL");
 
-            errores.AddRange(codigosSituacionInvalidos.Select(r => CrearDetalle(
-           mensaje: $"CUIL {r.Cuil}: CODSITUACION es obligatorio",
-         linea: r.Linea,
-           columna: 6
-            )));
+        errores.AddRange(codigosSituacionInvalidos.Select(r => CrearDetalle(
+       mensaje: $"CUIL {r.Cuil}: CODSITUACION es obligatorio",
+       linea: r.Linea,
+       columna: 6)));
 
-            return errores;
-        }
+        return errores;
+    }
 
-        private class RegistroError
-        {
-            public int Linea { get; set; }
-            public long? Cuil { get; set; }
-        }
+    private class RegistroError
+    {
+        public int Linea { get; set; }
+
+        public long? Cuil { get; set; }
     }
 }

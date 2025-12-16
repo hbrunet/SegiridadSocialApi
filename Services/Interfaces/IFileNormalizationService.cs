@@ -1,35 +1,43 @@
+// <copyright file="IFileNormalizationService.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
 using SeguridadSocialApi.Common;
 
-namespace SeguridadSocialApi.Services.Interfaces
+namespace SeguridadSocialApi.Services.Interfaces;
+
+/// <summary>
+/// Servicio para normalizaciÃ³n de archivos (encoding, caracteres especiales, etc.)
+/// </summary>
+public interface IFileNormalizationService
 {
     /// <summary>
-    /// Servicio para normalización de archivos (encoding, caracteres especiales, etc.)
+    /// Normaliza un archivo a UTF-8 sin BOM aplicando todas las transformaciones configuradas.
     /// </summary>
-    public interface IFileNormalizationService
-    {
-        /// <summary>
-        /// Normaliza un archivo a UTF-8 sin BOM aplicando todas las transformaciones configuradas
-        /// </summary>
-        Task<Result> NormalizeFileAsync(string filePath, CancellationToken cancellationToken = default);
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task<Result> NormalizeFileAsync(string filePath, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Detecta el encoding de un archivo
-        /// </summary>
-        Result<(System.Text.Encoding Encoding, int BomLength)> DetectEncoding(byte[] bytes);
+    /// <summary>
+    /// Detecta el encoding de un archivo.
+    /// </summary>
+    /// <returns></returns>
+    Result<(System.Text.Encoding Encoding, int BomLength)> DetectEncoding(byte[] bytes);
 
-        /// <summary>
-        /// Limpia caracteres problemáticos del contenido
-        /// </summary>
-        string CleanProblematicCharacters(string content);
+    /// <summary>
+    /// Limpia caracteres problemÃ¡ticos del contenido.
+    /// </summary>
+    /// <returns></returns>
+    string CleanProblematicCharacters(string content);
 
-        /// <summary>
-        /// Reemplaza punto decimal por coma en números
-        /// </summary>
-        string ReplaceDecimalPoint(string content);
+    /// <summary>
+    /// Reemplaza punto decimal por coma en nÃºmeros.
+    /// </summary>
+    /// <returns></returns>
+    string ReplaceDecimalPoint(string content);
 
-        /// <summary>
-        /// Elimina líneas vacías al final del contenido
-        /// </summary>
-        string RemoveTrailingEmptyLines(string content);
-    }
+    /// <summary>
+    /// Elimina lÃ­neas vacÃ­as al final del contenido.
+    /// </summary>
+    /// <returns></returns>
+    string RemoveTrailingEmptyLines(string content);
 }

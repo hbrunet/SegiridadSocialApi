@@ -1,55 +1,58 @@
-using SeguridadSocialApi.Services.DTOs;
-using System.Data;
+// <copyright file="IValidacionRule.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
 
-namespace SeguridadSocialApi.Validaciones
+using System.Data;
+using SeguridadSocialApi.Services.DTOs;
+
+namespace SeguridadSocialApi.Validaciones;
+
+/// <summary>
+/// Interfaz base para todas las reglas de validaciÃ³n de archivos.
+/// </summary>
+public interface IValidacionRule
 {
     /// <summary>
-    /// Interfaz base para todas las reglas de validación de archivos
+    /// Gets nombre descriptivo de la regla de validaciÃ³n.
     /// </summary>
-    public interface IValidacionRule
-    {
-        /// <summary>
-        /// Nombre descriptivo de la regla de validación
-        /// </summary>
-        string NombreRegla { get; }
-
-        /// <summary>
-        /// Descripción detallada de qué valida esta regla
-        /// </summary>
-        string Descripcion { get; }
-
-        /// <summary>
-        /// Tipo de validación: Error o Advertencia
-        /// </summary>
-        TipoValidacion Tipo { get; }
-
-        /// <summary>
-        /// Orden de ejecución de la regla (menor = primero)
-        /// </summary>
-        int Orden { get; }
-
-        /// <summary>
-        /// Ejecuta la validación contra la tabla temporal de Oracle
-        /// </summary>
-        /// <param name="connection">Conexión a Oracle</param>
-        /// <param name="idArchivo">ID del archivo a validar</param>
-        /// <returns>Lista de detalles de validación encontrados</returns>
-        Task<List<DetalleValidacionDto>> ValidarAsync(IDbConnection connection, long idArchivo);
-    }
+    string NombreRegla { get; }
 
     /// <summary>
-    /// Tipo de validación
+    /// Gets descripciÃ³n detallada de quÃ© valida esta regla.
     /// </summary>
-    public enum TipoValidacion
-    {
-        /// <summary>
-        /// Error crítico que impide el procesamiento
-        /// </summary>
-        Error = 1,
+    string Descripcion { get; }
 
-        /// <summary>
-        /// Advertencia que no impide el procesamiento
-        /// </summary>
-        Advertencia = 2
-    }
+    /// <summary>
+    /// Gets tipo de validaciÃ³n: Error o Advertencia.
+    /// </summary>
+    TipoValidacion Tipo { get; }
+
+    /// <summary>
+    /// Gets orden de ejecuciÃ³n de la regla (menor = primero).
+    /// </summary>
+    int Orden { get; }
+
+    /// <summary>
+    /// Ejecuta la validaciÃ³n contra la tabla temporal de Oracle.
+    /// </summary>
+    /// <param name="connection">ConexiÃ³n a Oracle.</param>
+    /// <param name="idArchivo">ID del archivo a validar.</param>
+    /// <returns>Lista de detalles de validaciÃ³n encontrados.</returns>
+    Task<List<DetalleValidacionDto>> ValidarAsync(IDbConnection connection, long idArchivo);
+}
+
+/// <summary>
+/// Tipo de validaciÃ³n.
+/// </summary>
+public enum TipoValidacion
+{
+    /// <summary>
+    /// Error crÃ­tico que impide el procesamiento.
+    /// </summary>
+    Error = 1,
+
+    /// <summary>
+    /// Advertencia que no impide el procesamiento.
+    /// </summary>
+    Advertencia = 2,
 }

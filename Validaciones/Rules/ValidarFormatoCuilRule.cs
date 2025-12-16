@@ -1,28 +1,37 @@
+// <copyright file="ValidarFormatoCuilRule.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
+using System.Data;
 using Dapper;
 using SeguridadSocialApi.Services.DTOs;
-using System.Data;
 
-namespace SeguridadSocialApi.Validaciones.Rules
+namespace SeguridadSocialApi.Validaciones.Rules;
+
+/// <summary>
+/// Valida que el formato del CUIL sea v√°lido (11 d√≠gitos).
+/// </summary>
+public class ValidarFormatoCuilRule : ValidacionRuleBase
 {
-    /// <summary>
-    /// Valida que el formato del CUIL sea v·lido (11 dÌgitos)
-    /// </summary>
-    public class ValidarFormatoCuilRule : ValidacionRuleBase
+    /// <inheritdoc/>
+    public override string NombreRegla => "FORMATO_CUIL";
+
+    /// <inheritdoc/>
+    public override string Descripcion =>
+"Verifica que el CUIL tenga exactamente 11 d√≠gitos num√©ricos";
+
+    /// <inheritdoc/>
+    public override TipoValidacion Tipo => TipoValidacion.Error;
+
+    /// <inheritdoc/>
+    public override int Orden => 5; // Se ejecuta primero
+
+    /// <inheritdoc/>
+    protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
+  IDbConnection connection,
+  long idArchivo)
     {
-        public override string NombreRegla => "FORMATO_CUIL";
-
-        public override string Descripcion =>
-   "Verifica que el CUIL tenga exactamente 11 dÌgitos numÈricos";
-
-        public override TipoValidacion Tipo => TipoValidacion.Error;
-
-        public override int Orden => 5; // Se ejecuta primero
-
-        protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
-      IDbConnection connection,
-      long idArchivo)
-        {
-            var sql = @"
+        var sql = @"
     SELECT 
  ID AS Linea,
        CUIL
@@ -31,19 +40,18 @@ namespace SeguridadSocialApi.Validaciones.Rules
    OR LENGTH(CUIL) != 11
      OR REGEXP_LIKE(CUIL, '[^0-9]')";
 
-            var errores = await connection.QueryAsync<CuilInvalido>(sql);
+        var errores = await connection.QueryAsync<CuilInvalido>(sql);
 
-            return errores.Select(e => CrearDetalle(
-              mensaje: $"CUIL inv·lido: '{e.Cuil ?? "NULL"}' (debe tener 11 dÌgitos numÈricos)",
-               linea: e.Linea,
-                 columna: 1
-              )).ToList();
-        }
+        return errores.Select(e => CrearDetalle(
+          mensaje: $"CUIL inv√°lido: '{e.Cuil ?? "NULL"}' (debe tener 11 d√≠gitos num√©ricos)",
+          linea: e.Linea,
+          columna: 1)).ToList();
+    }
 
-        private class CuilInvalido
-        {
-            public int Linea { get; set; }
-            public string? Cuil { get; set; }
-        }
+    private class CuilInvalido
+    {
+        public int Linea { get; set; }
+
+        public string? Cuil { get; set; }
     }
 }

@@ -176,6 +176,7 @@ const result = await pollJob();
 - **Expiración de resultados**: 1 hora después de completar
 - **Expiración de jobs fallidos**: 1 hora
 - **Limpieza automática**: Memory cache limpia entries expiradas
+- **Auditoría permanente**: Todos los jobs se registran en `SEGSOCIAL.JOB_AUDIT` para trazabilidad
 
 ### Configuración del Timeout
 
@@ -199,143 +200,64 @@ En `appsettings.json`:
 **Importante**: 
 - Si un SP excede el timeout configurado, se cancelará automáticamente y el job se marcará como `Failed` con el mensaje "Job cancelado o timeout excedido".
 - Si configuras `TimeoutMinutes: 0`, el job **NO tendrá timeout automático** y solo podrá cancelarse manualmente mediante `POST /api/jobs/{id}/cancel`.
+- **Todos los jobs se auditan en Oracle**: Los resultados in-memory expiran, pero el registro permanente queda en `SEGSOCIAL.JOB_AUDIT`.
 
-## Manejo de Errores
+## Sistema de Auditoría
 
-### Job no encontrado o expirado
-```json
-{
-  "error": "Job no encontrado o expirado"
-}
+### ¿Por qué Auditar?
+
+Los resultados en **memory cache expiran** después de 1 hora, pero necesitas:
+- ✅ **Trazabilidad**: Registro permanente de todas las ejecuciones
+- ✅ **Compliance**: Auditoría de quién ejecutó qué y cuándo
+- ✅ **Análisis**: Métricas de performance, tendencias de errores
+- ✅ **Debugging**: Logs detallados para troubleshooting
+- ✅ **Reportes**: Dashboards de gestión
+
+### Registro Automático
+
+**Todos los jobs se auditan automáticamente** en Oracle:
+
+```sql
+SEGSOCIAL.JOB_AUDIT
+├── JOB_ID (ID del JobManager .NET)
+├── INTERNAL_JOB_ID (ID de JOB_PROGRESS Oracle)
+├── JOB_NAME (Descripción)
+├── JOB_TYPE (FUSION, VALIDACION, etc.)
+├── INPUT_PARAMS (JSON con parámetros)
+├── CREATED_AT / STARTED_AT / COMPLETED_AT
+├── STATUS (COMPLETED, FAILED, TIMEOUT, CANCELLED)
+├── RESULT_DATA (JSON con resultado completo)
+├── ERROR_MESSAGE (si falló)
+├── DURATION_SECONDS
+├── REGISTROS_PROCESADOS / REGISTROS_ERRORES
+└── USUARIO / IP_ADDRESS / USER_AGENT
 ```
-**Causa**: El jobId no existe o pasó el tiempo de expiración (1 hora).  
-**Solución**: Reiniciar el proceso.
 
-### Job con error
-```json
-{
-  "job_id": "...",
-  "status": 3,
-  "error_message": "ORA-12345: descripción del error"
-}
+### Consultar Auditoría
+
+**Desde la API**:
+```http
+GET /api/jobs/{jobId}/audit      # Registro completo
+GET /api/jobs/{jobId}/logs       # Logs detallados
 ```
-**Causa**: El SP falló durante la ejecución.  
-**Solución**: Revisar logs, validar datos, reintentar.
 
-### Timeout excedido
-```json
-{
-  "error_message": "Job cancelado o timeout excedido"
-}
+**Desde Oracle**:
+```sql
+-- Últimos 20 jobs
+SELECT * FROM SEGSOCIAL.VW_JOB_AUDIT_SUMMARY
+ORDER BY CREATED_AT DESC FETCH FIRST 20 ROWS ONLY;
+
+-- Jobs fallidos hoy
+SELECT * FROM SEGSOCIAL.VW_JOB_FAILURES;
+
+-- Estadísticas por tipo
+SELECT * FROM SEGSOCIAL.VW_JOB_STATS;
 ```
-**Causa**: El job tardó más del tiempo configurado en `BackgroundJobs:TimeoutMinutes`.  
-**Solución**: 
-- Revisar performance del SP en Oracle
-- Aumentar el timeout en `appsettings.json` si el SP legítimamente necesita más tiempo
-- Optimizar el SP para que ejecute más rápido
 
-## Comparación: Sync vs Async
-
-### Sync (endpoint original `/crear-hoja`)
-✅ Respuesta inmediata  
-✅ Más simple para SPs rápidos (<30s)  
-❌ No apto para SPs largos (>1 minuto)  
-❌ Timeout de HTTP/proxy
-
-### Async (endpoint nuevo `/crear-hoja-async`)
-✅ No bloquea la conexión HTTP  
-✅ Progreso en tiempo real  
-✅ Soporte para SPs largos (hasta el timeout configurado)  
-✅ Mejor experiencia de usuario  
-❌ Requiere polling del cliente  
-❌ Un poco más complejo
-
-## Recomendación
-
-- **SPs rápidos (<30s)**: Usar `/crear-hoja` (sync)
-- **SPs lentos (>1 min)**: Usar `/crear-hoja-async` (async)
-- **SPs muy lentos (>10 min)**: Usar `/crear-hoja-async` obligatorio
-
-## Reporte de Progreso desde Oracle
-
-### ¿Cómo funciona?
-
-Los stored procedures de Oracle **no pueden hacer callbacks directos** a .NET. En su lugar:
-
-1. La API crea un registro en la tabla `USUARIO.JOB_PROGRESS` al iniciar el job
-2. El SP actualiza periódicamente esta tabla con su progreso:
-   ```sql
-   UPDATE USUARIO.JOB_PROGRESS 
-   SET PROGRESS_PCT = 50, STATUS_MESSAGE = 'Procesando registros...'
-   WHERE JOB_ID = :JobId;
-   COMMIT; -- Importante para que sea visible
-   ```
-3. La API hace **polling cada 2 segundos** a la tabla para leer el progreso
-4. El progreso se refleja en el `JobInfoDto` que consulta el cliente
-
-### Setup en Oracle
-
-**1. Crear la tabla de progreso** (ejecutar una sola vez):
+### Setup de Auditoría
 
 ```bash
-# Aplicar script SQL
-sqlplus USUARIO/password@HTEST01 @Scripts/Oracle_JobProgress_Setup.sql
+sqlplus SEGSOCIAL/password@HTEST01 @Scripts/Oracle_Job_Audit_Setup.sql
 ```
 
-O manualmente:
-```sql
-CREATE TABLE USUARIO.JOB_PROGRESS (
-  JOB_ID VARCHAR2(50) PRIMARY KEY,
-  PROGRESS_PCT NUMBER(3) DEFAULT 0 CHECK (PROGRESS_PCT BETWEEN 0 AND 100),
-  STATUS_MESSAGE VARCHAR2(500),
-  LAST_UPDATE TIMESTAMP DEFAULT SYSTIMESTAMP
-);
-```
-
-**2. Modificar el SP para reportar progreso**:
-
-Ver ejemplo completo en `Scripts/Oracle_JobProgress_Setup.sql`. Patrón básico:
-
-```sql
-PROCEDURE MI_SP_LARGO(
-  vJOB_ID IN VARCHAR2,  -- ← Agregar este parámetro
-  -- otros parámetros...
-) AS
-BEGIN
-  -- Paso 1 (10%)
-  UPDATE USUARIO.JOB_PROGRESS 
-  SET PROGRESS_PCT = 10, STATUS_MESSAGE = 'Validando...'
-  WHERE JOB_ID = vJOB_ID;
-  COMMIT;
-  
-  -- ... lógica paso 1 ...
-  
-  -- Paso 2 (50%)
-  UPDATE USUARIO.JOB_PROGRESS 
-  SET PROGRESS_PCT = 50, STATUS_MESSAGE = 'Procesando...'
-  WHERE JOB_ID = vJOB_ID;
-  COMMIT;
-  
-  -- ... etc ...
-END;
-```
-
-**Importante**: Hacer `COMMIT` después de cada UPDATE para que la API vea el cambio inmediatamente.
-
-### Si no se puede modificar el SP
-
-Si el SP no puede ser modificado para reportar progreso:
-- El job seguirá funcionando, pero el progreso se quedará en 0%
-- La API mostrará "Procesando..." hasta que el SP complete
-- El cliente debe seguir haciendo polling hasta que `status === 2` (Completed)
-
-## Escalabilidad
-
-El sistema actual usa **in-memory storage** (IMemoryCache) que funciona para:
-- Deployment single-instance
-- Volúmenes bajos-medios de jobs concurrentes
-
-Para **alta disponibilidad** o **múltiples instancias**, migrar a:
-- Redis para storage distribuido
-- Hangfire/Quartz para job scheduling robusto
-- Azure Service Bus / RabbitMQ para cola persistente
+Ver documentación completa en: **`Docs/JOB_AUDIT_SYSTEM.md`**

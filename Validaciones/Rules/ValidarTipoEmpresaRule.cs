@@ -1,62 +1,70 @@
+// <copyright file="ValidarTipoEmpresaRule.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
+using System.Data;
 using Dapper;
 using SeguridadSocialApi.Services.DTOs;
-using System.Data;
 
-namespace SeguridadSocialApi.Validaciones.Rules
+namespace SeguridadSocialApi.Validaciones.Rules;
+
+/// <summary>
+/// Valida que el tipo de empresa sea uno de los valores permitidos.
+/// </summary>
+public class ValidarTipoEmpresaRule : ValidacionRuleBase
 {
-    /// <summary>
-    /// Valida que el tipo de empresa sea uno de los valores permitidos
-    /// </summary>
-    public class ValidarTipoEmpresaRule : ValidacionRuleBase
+    /// <inheritdoc/>
+    public override string NombreRegla => "TIPO_EMPRESA_VALIDO";
+
+    /// <inheritdoc/>
+    public override string Descripcion =>
+    "Verifica que TIPOEMPRESA tenga uno de los valores permitidos: '3' o 'G'";
+
+    /// <inheritdoc/>
+    public override TipoValidacion Tipo => TipoValidacion.Error;
+
+    /// <inheritdoc/>
+    public override int Orden => 16; // Despu√©s de CODACTIVIDAD
+
+    /// <inheritdoc/>
+    protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
+      IDbConnection connection,
+      long idArchivo)
     {
-        public override string NombreRegla => "TIPO_EMPRESA_VALIDO";
+        var errores = new List<DetalleValidacionDto>();
 
-        public override string Descripcion =>
-        "Verifica que TIPOEMPRESA tenga uno de los valores permitidos: '3' o 'G'";
-
-        public override TipoValidacion Tipo => TipoValidacion.Error;
-
-        public override int Orden => 16; // DespuÈs de CODACTIVIDAD
-
-        protected override async Task<List<DetalleValidacionDto>> EjecutarValidacionAsync(
-          IDbConnection connection,
-     long idArchivo)
-        {
-            var errores = new List<DetalleValidacionDto>();
-
-            // Validar TIPOEMPRESA nulo
-            var tipoEmpresaNulo = await connection.QueryAsync<RegistroError>(@"
+        // Validar TIPOEMPRESA nulo
+        var tipoEmpresaNulo = await connection.QueryAsync<RegistroError>(@"
      SELECT ID AS Linea, CUIL, TIPOEMPRESA
 FROM USUARIO.TMP_NOV_DDJJ_PREV
       WHERE TIPOEMPRESA IS NULL");
 
-            errores.AddRange(tipoEmpresaNulo.Select(r => CrearDetalle(
-       mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA es obligatorio y no puede ser nulo",
-  linea: r.Linea,
-     columna: 38
-    )));
+        errores.AddRange(tipoEmpresaNulo.Select(r => CrearDetalle(
+   mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA es obligatorio y no puede ser nulo",
+   linea: r.Linea,
+   columna: 38)));
 
-            // Validar TIPOEMPRESA con valor no permitido
-            var tipoEmpresaInvalido = await connection.QueryAsync<RegistroError>(@"
+        // Validar TIPOEMPRESA con valor no permitido
+        var tipoEmpresaInvalido = await connection.QueryAsync<RegistroError>(@"
       SELECT ID AS Linea, CUIL, TIPOEMPRESA
      FROM USUARIO.TMP_NOV_DDJJ_PREV
    WHERE TIPOEMPRESA IS NOT NULL
           AND TIPOEMPRESA NOT IN ('3', 'G')");
 
-            errores.AddRange(tipoEmpresaInvalido.Select(r => CrearDetalle(
-mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA = '{r.TipoEmpresa}' no es v·lido (valores permitidos: '3', 'G')",
-  linea: r.Linea,
-         columna: 38
-       )));
+        errores.AddRange(tipoEmpresaInvalido.Select(r => CrearDetalle(
+mensaje: $"CUIL {r.Cuil}: TIPOEMPRESA = '{r.TipoEmpresa}' no es v√°lido (valores permitidos: '3', 'G')",
+linea: r.Linea,
+columna: 38)));
 
-            return errores;
-        }
+        return errores;
+    }
 
-        private class RegistroError
-        {
-            public int Linea { get; set; }
-            public long Cuil { get; set; }
-            public string? TipoEmpresa { get; set; }
-        }
+    private class RegistroError
+    {
+        public int Linea { get; set; }
+
+        public long Cuil { get; set; }
+
+        public string? TipoEmpresa { get; set; }
     }
 }

@@ -1,23 +1,26 @@
+// <copyright file="OracleConnectionFactory.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
+using System.Data;
 using Oracle.ManagedDataAccess.Client;
 using SeguridadSocialApi.Services.Interfaces;
-using System.Data;
 
-namespace SeguridadSocialApi.Services
+namespace SeguridadSocialApi.Services;
+
+public class OracleConnectionFactory : IOracleConnectionFactory
 {
-    public class OracleConnectionFactory : IOracleConnectionFactory
+    private readonly string connectionString;
+
+    public OracleConnectionFactory(IConfiguration configuration)
     {
-        private readonly string _connectionString;
+        connectionString = configuration["OracleConfig:ConnectionString"]
+            ?? throw new InvalidOperationException("Oracle connection string not configured.");
+    }
 
-        public OracleConnectionFactory(IConfiguration configuration)
-        {
-            _connectionString = configuration["OracleConfig:ConnectionString"]
-                ?? throw new InvalidOperationException("Oracle connection string not configured.");
-        }
-
-        public IDbConnection CreateConnection()
-        {
-            return new OracleConnection(_connectionString);
-        }
+    /// <inheritdoc/>
+    public IDbConnection CreateConnection()
+    {
+        return new OracleConnection(connectionString);
     }
 }
-

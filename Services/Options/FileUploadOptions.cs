@@ -1,50 +1,53 @@
-namespace SeguridadSocialApi.Services.Options
+// <copyright file="FileUploadOptions.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
+namespace SeguridadSocialApi.Services.Options;
+
+/// <summary>
+/// ConfiguraciÃ³n para el proceso de upload de archivos.
+/// </summary>
+public class FileUploadOptions
 {
+    public const string SectionName = "FileUpload";
+
     /// <summary>
-    /// Configuración para el proceso de upload de archivos
+    /// Gets or sets directorio local donde se guardan los archivos subidos temporalmente.
     /// </summary>
-    public class FileUploadOptions
-    {
-        public const string SectionName = "FileUpload";
+    public string UploadDirectory { get; set; } = "uploads";
 
-        /// <summary>
-        /// Directorio local donde se guardan los archivos subidos temporalmente
-        /// </summary>
-        public string UploadDirectory { get; set; } = "uploads";
+    /// <summary>
+    /// Gets or sets tamaÃ±o mÃ¡ximo de archivo en bytes (default: 100MB).
+    /// </summary>
+    public long MaxFileSizeBytes { get; set; } = 104_857_600; // 100 MB
 
-        /// <summary>
-        /// Tamaño máximo de archivo en bytes (default: 100MB)
-        /// </summary>
-        public long MaxFileSizeBytes { get; set; } = 104_857_600; // 100 MB
+    /// <summary>
+    /// Gets or sets extensiones de archivo permitidas.
+    /// </summary>
+    public string[] AllowedExtensions { get; set; } = new[] { ".txt", ".csv", ".dat" };
 
-        /// <summary>
-        /// Extensiones de archivo permitidas
-        /// </summary>
-        public string[] AllowedExtensions { get; set; } = new[] { ".txt", ".csv", ".dat" };
+    /// <summary>
+    /// Gets or sets prefijo para nombres de archivo en el servidor.
+    /// </summary>
+    public int FileNamePrefixLength { get; set; } = 3;
 
-        /// <summary>
-        /// Prefijo para nombres de archivo en el servidor
-        /// </summary>
-        public int FileNamePrefixLength { get; set; } = 3;
+    /// <summary>
+    /// Gets or sets a value indicating whether habilitar normalizaciÃ³n automÃ¡tica de encoding.
+    /// </summary>
+    public bool EnableEncodingNormalization { get; set; } = true;
 
-        /// <summary>
-        /// Habilitar normalización automática de encoding
-        /// </summary>
-        public bool EnableEncodingNormalization { get; set; } = true;
+    /// <summary>
+    /// Gets or sets a value indicating whether habilitar limpieza automÃ¡tica de caracteres especiales.
+    /// </summary>
+    public bool EnableCharacterCleaning { get; set; } = true;
 
-        /// <summary>
-        /// Habilitar limpieza automática de caracteres especiales
-        /// </summary>
-        public bool EnableCharacterCleaning { get; set; } = true;
+    /// <summary>
+    /// Gets or sets a value indicating whether habilitar reemplazo de punto decimal por coma.
+    /// </summary>
+    public bool EnableDecimalPointReplacement { get; set; } = true;
 
-        /// <summary>
-        /// Habilitar reemplazo de punto decimal por coma
-        /// </summary>
-        public bool EnableDecimalPointReplacement { get; set; } = true;
-
-        /// <summary>
-        /// Habilitar eliminación de líneas vacías al final
-        /// </summary>
-        public bool EnableEmptyLinesRemoval { get; set; } = true;
-    }
+    /// <summary>
+    /// Gets or sets a value indicating whether habilitar eliminaciÃ³n de lÃ­neas vacÃ­as al final.
+    /// </summary>
+    public bool EnableEmptyLinesRemoval { get; set; } = true;
 }

@@ -1,75 +1,83 @@
-using SeguridadSocialApi.Services.DTOs;
+// <copyright file="ValidacionExecutor.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
 using System.Data;
+using SeguridadSocialApi.Services.DTOs;
 
-namespace SeguridadSocialApi.Validaciones
+namespace SeguridadSocialApi.Validaciones;
+
+/// <summary>
+/// Orquestador que ejecuta todas las reglas de validaci贸n registradas
+/// Implementa Chain of Responsibility pattern.
+/// </summary>
+public class ValidacionExecutor
 {
-    /// <summary>
-    /// Orquestador que ejecuta todas las reglas de validaci髇 registradas
-    /// Implementa Chain of Responsibility pattern
-    /// </summary>
-    public class ValidacionExecutor
+    private readonly List<IValidacionRule> reglas;
+
+    public ValidacionExecutor(IEnumerable<IValidacionRule> reglas)
     {
-        private readonly List<IValidacionRule> _reglas;
+        // Ordenar reglas por orden de ejecuci贸n
+        this.reglas = reglas.OrderBy(r => r.Orden).ToList();
+    }
 
-        public ValidacionExecutor(IEnumerable<IValidacionRule> reglas)
+    /// <summary>
+    /// Ejecuta todas las reglas de validaci贸n y consolida resultados.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    public async Task<ValidacionArchivoDto> EjecutarValidacionesAsync(IDbConnection connection, long idArchivo, int totalRegistros)
+    {
+        var resultado = new ValidacionArchivoDto();
+
+        // Ejecutar todas las reglas
+        foreach (var regla in reglas)
         {
-            // Ordenar reglas por orden de ejecuci髇
-            _reglas = reglas.OrderBy(r => r.Orden).ToList();
-        }
+            var detalles = await regla.ValidarAsync(connection, idArchivo);
 
-        /// <summary>
-        /// Ejecuta todas las reglas de validaci髇 y consolida resultados
-        /// </summary>
-        public async Task<ValidacionArchivoDto> EjecutarValidacionesAsync(IDbConnection connection, long idArchivo, int totalRegistros)
-        {
-            var resultado = new ValidacionArchivoDto();
-
-            // Ejecutar todas las reglas
-            foreach (var regla in _reglas)
+            if (regla.Tipo == TipoValidacion.Error)
             {
-                var detalles = await regla.ValidarAsync(connection, idArchivo);
-
-                if (regla.Tipo == TipoValidacion.Error)
-                {
-                    resultado.Errores.AddRange(detalles);
-                }
-                else if (regla.Tipo == TipoValidacion.Advertencia)
-                {
-                    resultado.Advertencias.AddRange(detalles);
-                }
+                resultado.Errores.AddRange(detalles);
             }
-
-            // Calcular totales
-            resultado.RegistrosErrores = resultado.Errores.Count;
-            resultado.RegistrosAdvertencias = resultado.Advertencias.Count;
-            resultado.RegistrosValidos = totalRegistros - resultado.RegistrosErrores;
-
-            return resultado;
-        }
-
-        /// <summary>
-        /// Obtiene informaci髇 de todas las reglas registradas (鷗il para documentaci髇/debugging)
-        /// </summary>
-        public List<InfoReglaValidacion> ObtenerReglasRegistradas()
-        {
-            return _reglas.Select(r => new InfoReglaValidacion
+            else if (regla.Tipo == TipoValidacion.Advertencia)
             {
-                Nombre = r.NombreRegla,
-                Descripcion = r.Descripcion,
-                Tipo = r.Tipo.ToString(),
-                Orden = r.Orden
-            }).ToList();
+                resultado.Advertencias.AddRange(detalles);
+            }
         }
+
+        // Calcular totales
+        resultado.RegistrosErrores = resultado.Errores.Count;
+        resultado.RegistrosAdvertencias = resultado.Advertencias.Count;
+        resultado.RegistrosValidos = totalRegistros - resultado.RegistrosErrores;
+
+        return resultado;
     }
 
     /// <summary>
-    /// DTO para exponer informaci髇 sobre las reglas de validaci髇
+    /// Obtiene informaci贸n de todas las reglas registradas (煤til para documentaci贸n/debugging).
     /// </summary>
-    public class InfoReglaValidacion
+    /// <returns></returns>
+    public List<InfoReglaValidacion> ObtenerReglasRegistradas()
     {
-        public string Nombre { get; set; } = string.Empty;
-        public string Descripcion { get; set; } = string.Empty;
-        public string Tipo { get; set; } = string.Empty;
-        public int Orden { get; set; }
+        return reglas.Select(r => new InfoReglaValidacion
+        {
+            Nombre = r.NombreRegla,
+            Descripcion = r.Descripcion,
+            Tipo = r.Tipo.ToString(),
+            Orden = r.Orden,
+        }).ToList();
     }
+}
+
+/// <summary>
+/// DTO para exponer informaci贸n sobre las reglas de validaci贸n.
+/// </summary>
+public class InfoReglaValidacion
+{
+    public string Nombre { get; set; } = string.Empty;
+
+    public string Descripcion { get; set; } = string.Empty;
+
+    public string Tipo { get; set; } = string.Empty;
+
+    public int Orden { get; set; }
 }

@@ -1,59 +1,64 @@
-using Dapper;
+// <copyright file="HojaRepository.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
 using System.Data;
+using Dapper;
 using SeguridadSocialApi.Services;
-using SeguridadSocialApi.Services.Interfaces;
 using SeguridadSocialApi.Services.DTOs;
+using SeguridadSocialApi.Services.Interfaces;
 
-namespace SeguridadSocialApi.Repositories
+namespace SeguridadSocialApi.Repositories;
+
+public class HojaRepository : IHojaRepository
 {
-    public class HojaRepository : IHojaRepository
+    private readonly IUnitOfWork unitOfWork;
+
+    public HojaRepository(IUnitOfWork unitOfWork)
     {
-        private readonly IUnitOfWork _unitOfWork;
+        this.unitOfWork = unitOfWork;
+    }
 
-        public HojaRepository(IUnitOfWork unitOfWork)
+    /// <inheritdoc/>
+    public async Task<HojasPaginadasDto> GetHojasAsync(DateTime? periodo, int? estado, int? nroHoja, int? idRep, int page = 1, int pageSize = 10)
+    {
+        try
         {
-            _unitOfWork = unitOfWork;
-        }
+            var whereConditions = new List<string> { "H.TIPOENTRADA = 156" };
+            var parameters = new DynamicParameters();
 
-        public async Task<HojasPaginadasDto> GetHojasAsync(DateTime? periodo, int? estado, int? nroHoja, int? idRep, int page = 1, int pageSize = 10)
-        {
-            try
+            if (periodo.HasValue)
             {
-                var whereConditions = new List<string> { "H.TIPOENTRADA = 156" };
-                var parameters = new DynamicParameters();
+                whereConditions.Add("H.PERIODO = :Periodo");
+                parameters.Add("Periodo", periodo.Value, DbType.DateTime);
+            }
 
-                if (periodo.HasValue)
-                {
-                    whereConditions.Add("H.PERIODO = :Periodo");
-                    parameters.Add("Periodo", periodo.Value, DbType.DateTime);
-                }
+            if (estado.HasValue)
+            {
+                whereConditions.Add("H.IDESTADO = :Estado");
+                parameters.Add("Estado", estado.Value, DbType.Int32);
+            }
 
-                if (estado.HasValue)
-                {
-                    whereConditions.Add("H.IDESTADO = :Estado");
-                    parameters.Add("Estado", estado.Value, DbType.Int32);
-                }
+            if (nroHoja.HasValue)
+            {
+                whereConditions.Add("MOD(H.ID,10000) = :NroHoja");
+                parameters.Add("NroHoja", nroHoja.Value, DbType.Int32);
+            }
 
-                if (nroHoja.HasValue)
-                {
-                    whereConditions.Add("MOD(H.ID,10000) = :NroHoja");
-                    parameters.Add("NroHoja", nroHoja.Value, DbType.Int32);
-                }
+            if (idRep.HasValue)
+            {
+                whereConditions.Add("TO_NUMBER(TRIM(H.OBSERVACIONES)) = :IdRep");
+                parameters.Add("IdRep", idRep.Value, DbType.Int32);
+            }
 
-                if (idRep.HasValue)
-                {
-                    whereConditions.Add("TO_NUMBER(TRIM(H.OBSERVACIONES)) = :IdRep");
-                    parameters.Add("IdRep", idRep.Value, DbType.Int32);
-                }
+            var whereClause = string.Join(" AND ", whereConditions);
 
-                var whereClause = string.Join(" AND ", whereConditions);
+            // Primero obtener el conteo total de registros (sin paginación)
+            var countSql = $@"SELECT COUNT(*) FROM USUARIO.HOJA H WHERE {whereClause}";
+            var totalRegistros = await unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-                // Primero obtener el conteo total de registros (sin paginación)
-                var countSql = $@"SELECT COUNT(*) FROM USUARIO.HOJA H WHERE {whereClause}";
-                var totalRegistros = await _unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
-
-                // Luego obtener los registros paginados
-                var sql = $@"SELECT h.ID,
+            // Luego obtener los registros paginados
+            var sql = $@"SELECT h.ID,
                                     MOD(h.ID,10000) as NROHOJA,
                                     H.PERIODO,
                                     H.IDTIPOLIQUIDACION,
@@ -69,11 +74,11 @@ namespace SeguridadSocialApi.Repositories
                              INNER JOIN USUARIO.TABTIPOLIQUIDACION TL ON TL.IDTIPOLIQUIDACION = H.IDTIPOLIQUIDACION
                              WHERE {whereClause}";
 
-                // Agregar paginación with ROWNUM
-                parameters.Add("PageSize", pageSize, DbType.Int32);
-                parameters.Add("Page", page, DbType.Int32);
+            // Agregar paginación with ROWNUM
+            parameters.Add("PageSize", pageSize, DbType.Int32);
+            parameters.Add("Page", page, DbType.Int32);
 
-                var paginatedSql = $@"
+            var paginatedSql = $@"
                     SELECT *
                     FROM (SELECT a.*, ROWNUM rnum
                             FROM ({sql}) a
@@ -81,81 +86,83 @@ namespace SeguridadSocialApi.Repositories
                     WHERE rnum > :PageSize * (:Page - 1)
                 ";
 
-                var hojas = await _unitOfWork.Connection.QueryAsync<HojaDto>(paginatedSql, parameters);
+            var hojas = await unitOfWork.Connection.QueryAsync<HojaDto>(paginatedSql, parameters);
 
-                return new HojasPaginadasDto
-                {
-                    TotalRegistros = totalRegistros,
-                    Hojas = hojas.ToList()
-                };
-            }
-            catch (Exception ex)
+            return new HojasPaginadasDto
             {
-                throw new ApplicationException($"Error al obtener hojas: {ex.Message}");
-            }
+                TotalRegistros = totalRegistros,
+                Hojas = hojas.ToList(),
+            };
         }
-
-        public async Task<int> CrearHojaAsync(long idArchivo, int tipoNovedad, int grupoAdicional, int tipoLiquidacion, int cantidadRegistros, DateTime periodo, int idRep)
+        catch (Exception ex)
         {
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("vTIPOENTRADA", tipoNovedad, DbType.Int32);
-                parameters.Add("vGRUPOADIC", grupoAdicional, DbType.Int32);
-                parameters.Add("vTIPOLIQ", tipoLiquidacion, DbType.Int32);
-                parameters.Add("vCANTREG", cantidadRegistros, DbType.Int32);
-                parameters.Add("vIDARCHIVO", idArchivo, DbType.Int64);
-                parameters.Add("vPERIODO", periodo, DbType.DateTime);
-                parameters.Add("vIDREP", idRep, DbType.Int32);
-                parameters.Add("vNROHOJA", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                await _unitOfWork.Connection.ExecuteAsync("USUARIO.MOD_TEMPORALES.W_INSERT_NOVDDJJPREV",
-                    parameters,
-                    commandType: CommandType.StoredProcedure);
-
-                return parameters.Get<int>("vNROHOJA");
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException($"Error al crear hoja: {ex.Message}");
-            }
+            throw new ApplicationException($"Error al obtener hojas: {ex.Message}");
         }
+    }
 
-        public async Task ProcesarHojaAsync(int nroHoja)
+    /// <inheritdoc/>
+    public async Task<int> CrearHojaAsync(long idArchivo, int tipoNovedad, int grupoAdicional, int tipoLiquidacion, int cantidadRegistros, DateTime periodo, int idRep)
+    {
+        try
         {
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("vNROHOJA", nroHoja, DbType.Int32, ParameterDirection.Input);
+            var parameters = new DynamicParameters();
+            parameters.Add("vTIPOENTRADA", tipoNovedad, DbType.Int32);
+            parameters.Add("vGRUPOADIC", grupoAdicional, DbType.Int32);
+            parameters.Add("vTIPOLIQ", tipoLiquidacion, DbType.Int32);
+            parameters.Add("vCANTREG", cantidadRegistros, DbType.Int32);
+            parameters.Add("vIDARCHIVO", idArchivo, DbType.Int64);
+            parameters.Add("vPERIODO", periodo, DbType.DateTime);
+            parameters.Add("vIDREP", idRep, DbType.Int32);
+            parameters.Add("vNROHOJA", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                await _unitOfWork.Connection.ExecuteAsync(
-                    "SEGSOCIAL.DDJJ_MENSUAL.CARGA_DDJJ_MENSUAL_REP",
-                    parameters,
-                    commandType: CommandType.StoredProcedure);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException($"Error al procesar hoja {nroHoja}: {ex.Message}");
-            }
+            await unitOfWork.Connection.ExecuteAsync(
+                "USUARIO.MOD_TEMPORALES.W_INSERT_NOVDDJJPREV",
+                parameters,
+                commandType: CommandType.StoredProcedure);
+
+            return parameters.Get<int>("vNROHOJA");
         }
-
-        public async Task AnularHojaAsync(int nroHoja)
+        catch (Exception ex)
         {
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("vNrohoja", nroHoja, DbType.Int32, ParameterDirection.Input);
+            throw new ApplicationException($"Error al crear hoja: {ex.Message}");
+        }
+    }
 
-                await _unitOfWork.Connection.ExecuteAsync(
-                    "USUARIO.WORKFLOW.hoja_anular",
-                    parameters,
-                    commandType: CommandType.StoredProcedure);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException($"Error al anular hoja {nroHoja}: {ex.Message}");
-            }
+    /// <inheritdoc/>
+    public async Task ProcesarHojaAsync(int nroHoja)
+    {
+        try
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("vNROHOJA", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+            await unitOfWork.Connection.ExecuteAsync(
+                "SEGSOCIAL.DDJJ_MENSUAL.CARGA_DDJJ_MENSUAL_REP",
+                parameters,
+                commandType: CommandType.StoredProcedure);
+        }
+        catch (Exception ex)
+        {
+            throw new ApplicationException($"Error al procesar hoja {nroHoja}: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task AnularHojaAsync(int nroHoja)
+    {
+        try
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("vNrohoja", nroHoja, DbType.Int32, ParameterDirection.Input);
+
+            await unitOfWork.Connection.ExecuteAsync(
+                "USUARIO.WORKFLOW.hoja_anular",
+                parameters,
+                commandType: CommandType.StoredProcedure);
+        }
+        catch (Exception ex)
+        {
+            throw new ApplicationException($"Error al anular hoja {nroHoja}: {ex.Message}");
         }
     }
 }
-

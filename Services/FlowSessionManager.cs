@@ -1,77 +1,95 @@
+// <copyright file="FlowSessionManager.cs" company="Seguridad Social API">
+// Copyright (c) Seguridad Social API. All rights reserved.
+// </copyright>
+
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Memory;
 using Oracle.ManagedDataAccess.Client;
 using SeguridadSocialApi.Services.Interfaces;
 
-namespace SeguridadSocialApi.Services
+namespace SeguridadSocialApi.Services;
+
+internal sealed class FlowSession
 {
-    internal sealed class FlowSession
+    public required OracleConnection Connection { get; init; }
+
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public class FlowSessionManager : IFlowSessionManager
+{
+    private readonly IMemoryCache cache;
+    private readonly IConfiguration configuration;
+    private readonly MemoryCacheEntryOptions cacheOptions;
+
+    private const string CacheKeyPrefix = "flow-session:";
+
+    public FlowSessionManager(IMemoryCache cache, IConfiguration configuration)
     {
-        public required OracleConnection Connection { get; init; }
-        public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+        this.cache = cache;
+        this.configuration = configuration;
+
+        var minutes = this.configuration.GetValue<int?>("FlowSession:ExpirationMinutes") ?? 10;
+        cacheOptions = new MemoryCacheEntryOptions
+        {
+            SlidingExpiration = TimeSpan.FromMinutes(minutes),
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(minutes * 2),
+        };
     }
 
-    public class FlowSessionManager : IFlowSessionManager
+    /// <inheritdoc/>
+    public async Task<string> StartAsync()
     {
-        private readonly IMemoryCache _cache;
-        private readonly IConfiguration _configuration;
-        private readonly MemoryCacheEntryOptions _cacheOptions;
+        // Build a dedicated Oracle connection with pooling disabled to preserve a single session across requests
+        var baseConnStr = configuration["OracleConfig:ConnectionString"]
+            ?? throw new InvalidOperationException("Oracle connection string not configured.");
 
-        private const string CacheKeyPrefix = "flow-session:";
-
-        public FlowSessionManager(IMemoryCache cache, IConfiguration configuration)
+        var builder = new OracleConnectionStringBuilder(baseConnStr)
         {
-            _cache = cache;
-            _configuration = configuration;
+            Pooling = false,
+        };
 
-            var minutes = _configuration.GetValue<int?>("FlowSession:ExpirationMinutes") ?? 10;
-            _cacheOptions = new MemoryCacheEntryOptions
-            {
-                SlidingExpiration = TimeSpan.FromMinutes(minutes),
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(minutes * 2)
-            };
+        var conn = new OracleConnection(builder.ConnectionString);
+        await conn.OpenAsync();
+
+        var flowId = Guid.NewGuid().ToString("N");
+        cache.Set(CacheKey(flowId), new FlowSession { Connection = conn }, cacheOptions);
+        return flowId;
+    }
+
+    /// <inheritdoc/>
+    public OracleConnection? GetConnection(string flowId)
+    {
+        if (string.IsNullOrWhiteSpace(flowId))
+        {
+            return null;
         }
 
-        public async Task<string> StartAsync()
+        return cache.TryGetValue(CacheKey(flowId), out FlowSession? session) ? session!.Connection : null;
+    }
+
+    /// <inheritdoc/>
+    public Task EndAsync(string flowId)
+    {
+        if (string.IsNullOrWhiteSpace(flowId))
         {
-            // Build a dedicated Oracle connection with pooling disabled to preserve a single session across requests
-            var baseConnStr = _configuration["OracleConfig:ConnectionString"]
-                ?? throw new InvalidOperationException("Oracle connection string not configured.");
-
-            var builder = new OracleConnectionStringBuilder(baseConnStr)
-            {
-                Pooling = false
-            };
-
-            var conn = new OracleConnection(builder.ConnectionString);
-            await conn.OpenAsync();
-
-            var flowId = Guid.NewGuid().ToString("N");
-            _cache.Set(CacheKey(flowId), new FlowSession { Connection = conn }, _cacheOptions);
-            return flowId;
-        }
-
-        public OracleConnection? GetConnection(string flowId)
-        {
-            if (string.IsNullOrWhiteSpace(flowId)) return null;
-            return _cache.TryGetValue(CacheKey(flowId), out FlowSession? session) ? session!.Connection : null;
-        }
-
-        public Task EndAsync(string flowId)
-        {
-            if (string.IsNullOrWhiteSpace(flowId)) return Task.CompletedTask;
-            if (_cache.TryGetValue(CacheKey(flowId), out FlowSession? session))
-            {
-                _cache.Remove(CacheKey(flowId));
-                try
-                {
-                    session!.Connection.Dispose();
-                }
-                catch { /* ignore */ }
-            }
             return Task.CompletedTask;
         }
 
-        private static string CacheKey(string flowId) => CacheKeyPrefix + flowId;
+        if (cache.TryGetValue(CacheKey(flowId), out FlowSession? session))
+        {
+            cache.Remove(CacheKey(flowId));
+            try
+            {
+                session!.Connection.Dispose();
+            }
+            catch
+            { /* ignore */
+            }
+        }
+
+        return Task.CompletedTask;
     }
+
+    private static string CacheKey(string flowId) => CacheKeyPrefix + flowId;
 }
