@@ -5,6 +5,7 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Oracle.ManagedDataAccess.Client;
+using SeguridadSocialApi.Attributes;
 using SeguridadSocialApi.Controllers.Requests;
 using SeguridadSocialApi.Controllers.Responses;
 using SeguridadSocialApi.Repositories;
@@ -16,6 +17,7 @@ using SeguridadSocialApi.Validaciones;
 namespace SeguridadSocialApi.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class NovedadesController : ControllerBase
 {

@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using SeguridadSocialApi.Attributes;
 using SeguridadSocialApi.Controllers.Requests;
 using SeguridadSocialApi.Controllers.Responses;
 using SeguridadSocialApi.Repositories;
@@ -10,6 +11,7 @@ using SeguridadSocialApi.Services.DTOs;
 namespace SeguridadSocialApi.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class DDJJController : ControllerBase
 {

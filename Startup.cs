@@ -2,8 +2,12 @@
 // Copyright (c) Seguridad Social API. All rights reserved.
 // </copyright>
 
+using System.Net;
+using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using SeguridadSocialApi.Repositories;
@@ -60,6 +64,54 @@ public class Startup
 
         // Configurar Options Pattern
         services.Configure<FileUploadOptions>(Configuration.GetSection(FileUploadOptions.SectionName));
+        services.Configure<AuthOptions>(Configuration.GetSection(AuthOptions.SectionName));
+        services.Configure<JwtOptions>(Configuration.GetSection(JwtOptions.SectionName));
+
+        // Configurar HttpClient para AuthService con soporte de proxy
+        services.AddHttpClient<IAuthService, AuthService>((serviceProvider, client) =>
+        {
+            var authOptions = Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>();
+            client.BaseAddress = new Uri(authOptions?.BaseUrl ?? "http://svr-v-patri:85");
+            client.Timeout = TimeSpan.FromSeconds(authOptions?.TimeoutSeconds ?? 30);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var proxyUrl = Configuration["Proxy:Url"];
+            var proxyUser = Configuration["Proxy:Username"];
+            var proxyPassword = Configuration["Proxy:Password"];
+            var bypassProxy = Configuration.GetValue<bool>("Proxy:BypassForLocalAddresses", true);
+
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            };
+
+            if (!string.IsNullOrEmpty(proxyUrl))
+            {
+                handler.Proxy = new WebProxy(proxyUrl)
+                {
+                    BypassProxyOnLocal = bypassProxy,
+                    UseDefaultCredentials = false,
+                };
+
+                if (!string.IsNullOrEmpty(proxyUser) && !string.IsNullOrEmpty(proxyPassword))
+                {
+                    handler.Proxy.Credentials = new NetworkCredential(proxyUser, proxyPassword);
+                }
+                else
+                {
+                    handler.Proxy.Credentials = CredentialCache.DefaultNetworkCredentials;
+                }
+
+                handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
+            }
+
+            return handler;
+        });
 
         // Servicios de archivo
         services.AddScoped<IFileStorageService, FileStorageService>();
@@ -103,6 +155,11 @@ public class Startup
         services.AddSingleton<IJobManager, JobManager>();
         services.AddSingleton<BackgroundJobExecutor>();
         services.AddHostedService(provider => provider.GetRequiredService<BackgroundJobExecutor>());
+
+        // Nota: Usando middleware JWT personalizado debido a limitaciones de .NET 8
+        // con validación de firma cuando la API externa no comparte la clave secreta.
+        // Ver Middleware/JwtMiddleware.cs
+        Log.Information("✅ Configuración completada. Autenticación JWT se maneja con middleware personalizado.");
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -142,6 +199,10 @@ public class Startup
 
         app.UseRouting();
         app.UseCors("AllowAll");
+
+        // Usar middleware JWT personalizado (sin validación de firma)
+        app.UseMiddleware<SeguridadSocialApi.Middleware.JwtMiddleware>();
+
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();

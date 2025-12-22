@@ -3,6 +3,7 @@
 // </copyright>
 
 using Microsoft.AspNetCore.Mvc;
+using SeguridadSocialApi.Attributes;
 using SeguridadSocialApi.Repositories;
 using SeguridadSocialApi.Services;
 using SeguridadSocialApi.Services.DTOs;
