@@ -45,6 +45,56 @@ public class Startup
         services.AddFluentValidationClientsideAdapters();
         services.AddValidatorsFromAssemblyContaining<Startup>();
 
+        // Configurar Swagger/OpenAPI
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(options =>
+        {
+            options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+            {
+                Version = "v1",
+                Title = "Seguridad Social API",
+                Description = "API para gestión de declaraciones juradas de Seguridad Social",
+                Contact = new Microsoft.OpenApi.Models.OpenApiContact
+                {
+                    Name = "Equipo de Desarrollo",
+                    Email = "desarrollo@example.com"
+                }
+            });
+
+            // Configurar autenticación JWT en Swagger
+            options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Description = "Autenticación JWT. Ingresa 'Bearer' seguido de un espacio y luego tu token. Ejemplo: 'Bearer abc123'",
+                Name = "Authorization",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+                Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
+            });
+
+            options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+            {
+                {
+                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    {
+                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                        {
+                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
+            });
+
+            // Incluir comentarios XML (opcional - requiere habilitar generación de XML en .csproj)
+            // var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            // var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            // if (File.Exists(xmlPath))
+            // {
+            //     options.IncludeXmlComments(xmlPath);
+            // }
+        });
+
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", builder =>
@@ -168,6 +218,23 @@ public class Startup
         {
             app.UseDeveloperExceptionPage();
         }
+
+        // Habilitar Swagger y Swagger UI
+        app.UseSwagger();
+        app.UseSwaggerUI(options =>
+        {
+            options.SwaggerEndpoint("/swagger/v1/swagger.json", "Seguridad Social API v1");
+            options.RoutePrefix = "swagger"; // Acceder en /swagger
+            options.DocumentTitle = "Seguridad Social API - Documentación";
+            options.DisplayRequestDuration();
+
+            // Configuración de UI mejorada
+            options.DefaultModelsExpandDepth(2);
+            options.DefaultModelExpandDepth(2);
+            options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+            options.EnableDeepLinking();
+            options.EnableFilter();
+        });
 
         // Agregar Serilog request logging
         app.UseSerilogRequestLogging();

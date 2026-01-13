@@ -12,13 +12,12 @@ namespace SeguridadSocialApi.Services.Interfaces;
 public interface IAuthService
 {
     /// <summary>
-  /// Autentica un usuario contra la API externa.
+    /// Autentica un usuario contra la API externa.
     /// </summary>
     /// <param name="userName">Nombre de usuario.</param>
     /// <param name="password">Contraseña del usuario.</param>
-    /// <param name="applicationId">ID de la aplicación (default: 9 = DGS Intranet).</param>
     /// <returns>Response con el token JWT y datos del usuario.</returns>
-    Task<AuthResponse> LoginAsync(string userName, string password, int applicationId = 9);
+    Task<AuthResponse> LoginAsync(string userName, string password);
 
     /// <summary>
     /// Obtiene la información del usuario desde los claims del token JWT.

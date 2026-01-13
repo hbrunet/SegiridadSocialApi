@@ -30,15 +30,15 @@ public class AuthService : IAuthService
     }
 
     /// <inheritdoc/>
-    public async Task<AuthResponse> LoginAsync(string userName, string password, int applicationId)
+    public async Task<AuthResponse> LoginAsync(string userName, string password)
     {
         try
         {
-            var request = new LoginRequest
+            var request = new ExternalLoginRequest
             {
                 UserName = userName,
                 Password = password,
-                ApplicationId = applicationId,
+                ApplicationId = _options.ApplicationId,
             };
 
             var response = await _httpClient.PostAsJsonAsync(_options.LoginEndpoint, request);

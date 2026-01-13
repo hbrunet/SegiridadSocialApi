@@ -10,6 +10,7 @@ using SeguridadSocialApi.Repositories;
 using SeguridadSocialApi.Services;
 using SeguridadSocialApi.Services.BackgroundJobs;
 using SeguridadSocialApi.Services.DTOs;
+using System.Security.Claims;
 
 namespace SeguridadSocialApi.Controllers;
 
@@ -50,46 +51,47 @@ public class TestingController : ControllerBase
         var jobId = Guid.NewGuid().ToString("N");
         var helper = new BackgroundJobHelper(_backgroundJobExecutor.ServiceProvider, _logger);
         var auditHelper = new JobAuditHelper(
-            HttpContext.RequestServices.GetRequiredService<IJobAuditRepository>(),
-            _logger);
+                                            HttpContext.RequestServices.GetRequiredService<IJobAuditRepository>(),
+                                            _logger);
 
         _jobManager.CreateJobWithId(
-            jobId,
-            async (progress, cancellationToken) =>
-            {
-                return await helper.ExecuteJobAsync(
                     jobId,
-                    $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}",
-                    async (connection, ct) =>
+                    async (progress, cancellationToken) =>
                     {
-                        var parameters = new DynamicParameters();
-                        parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
-                        parameters.Add("p_job_id", jobId, System.Data.DbType.String, System.Data.ParameterDirection.Input);
-
-                        await connection.ExecuteAsync(
-                            "SEGSOCIAL.JOBS_MONITOR.SP_TEST_FUSION_QUICK",
-                            parameters,
-                            commandType: System.Data.CommandType.StoredProcedure);
-
-                        return new FusionDatosResponse
+                        return await helper.ExecuteJobAsync(
+                        jobId,
+                        $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}",
+                        async (connection, ct) =>
                         {
-                            Periodo = request.Periodo,
-                            Estado = "COMPLETADO",
-                            Mensaje = $"Test rápido completado para periodo {request.Periodo:yyyy-MM}",
-                            JobId = jobId,
-                        };
-                    });
-            },
-            $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}");
+                            var parameters = new DynamicParameters();
+                            parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
+                            parameters.Add("p_job_id", jobId, System.Data.DbType.String, System.Data.ParameterDirection.Input);
+
+                            await connection.ExecuteAsync(
+                                                        "SEGSOCIAL.JOBS_MONITOR.SP_TEST_FUSION_QUICK",
+                                                        parameters,
+                                                        commandType: System.Data.CommandType.StoredProcedure);
+
+                            return new FusionDatosResponse
+                            {
+                                Periodo = request.Periodo,
+                                Estado = "COMPLETADO",
+                                Mensaje = $"Test rápido completado para periodo {request.Periodo:yyyy-MM}",
+                                JobId = jobId,
+                            };
+                        });
+                    },
+                    $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}");
 
         _logger.LogInformation("Job {JobId} creado", jobId);
 
+        var username = HttpContext.User?.FindFirst("unique_name")?.Value;
+
         await auditHelper.InsertAuditAsync(
-            jobId,
-            request,
-            "TEST_FUSION_QUICK",
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
-            HttpContext.Request.Headers["User-Agent"].ToString());
+                                            jobId,
+                                            request,
+                                            "TEST_FUSION_QUICK",
+                                            username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);
 
@@ -124,38 +126,39 @@ public class TestingController : ControllerBase
             async (progress, cancellationToken) =>
             {
                 return await helper.ExecuteJobAsync(
-                    jobId,
-                    $"Test Fusion Slow - Periodo {request.Periodo:yyyy-MM}",
-                    async (connection, ct) =>
+                jobId,
+                $"Test Fusion Slow - Periodo {request.Periodo:yyyy-MM}",
+                async (connection, ct) =>
+                {
+                    var parameters = new DynamicParameters();
+                    parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
+                    parameters.Add("p_job_id", jobId, System.Data.DbType.String, System.Data.ParameterDirection.Input);
+
+                    await connection.ExecuteAsync(
+                    "SEGSOCIAL.JOBS_MONITOR.SP_TEST_FUSION_SLOW",
+                    parameters,
+                    commandType: System.Data.CommandType.StoredProcedure);
+
+                    return new FusionDatosResponse
                     {
-                        var parameters = new DynamicParameters();
-                        parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
-                        parameters.Add("p_job_id", jobId, System.Data.DbType.String, System.Data.ParameterDirection.Input);
-
-                        await connection.ExecuteAsync(
-                            "SEGSOCIAL.JOBS_MONITOR.SP_TEST_FUSION_SLOW",
-                            parameters,
-                            commandType: System.Data.CommandType.StoredProcedure);
-
-                        return new FusionDatosResponse
-                        {
-                            Periodo = request.Periodo,
-                            Estado = "COMPLETADO",
-                            Mensaje = $"Test lento completado para periodo {request.Periodo:yyyy-MM}",
-                            JobId = jobId,
-                        };
-                    });
+                    Periodo = request.Periodo,
+                    Estado = "COMPLETADO",
+                    Mensaje = $"Test lento completado para periodo {request.Periodo:yyyy-MM}",
+                    JobId = jobId,
+                    };
+                });
             },
             $"Test Fusion Slow - Periodo {request.Periodo:yyyy-MM}");
 
         _logger.LogInformation("Job {JobId} creado", jobId);
 
+        var username = HttpContext.User?.FindFirst("unique_name")?.Value;
+
         await auditHelper.InsertAuditAsync(
-            jobId,
-            request,
-            "TEST_FUSION_SLOW",
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
-            HttpContext.Request.Headers["User-Agent"].ToString());
+                                            jobId,
+                                            request,
+                                            "TEST_FUSION_SLOW",
+                                            username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);
 

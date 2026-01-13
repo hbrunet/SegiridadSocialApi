@@ -32,4 +32,10 @@ public class AuthOptions
     /// Gets or sets el número de reintentos en caso de fallo.
     /// </summary>
     public int RetryCount { get; set; } = 3;
+
+    /// <summary>
+    /// Gets or sets el ID de la aplicación.
+    /// Default: 9 (DGS Intranet).
+    /// </summary>
+  public int ApplicationId { get; set; } = 9;
 }

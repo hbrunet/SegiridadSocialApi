@@ -44,8 +44,7 @@ public class AuthController : ControllerBase
         {
             var response = await _authService.LoginAsync(
                                                         request.UserName,
-                                                        request.Password,
-                                                        request.ApplicationId);
+                                                        request.Password);
 
             if (!response.Success || response.Data == null)
             {

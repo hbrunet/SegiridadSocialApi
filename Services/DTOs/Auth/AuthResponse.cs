@@ -2,6 +2,7 @@
 // Copyright (c) Seguridad Social API. All rights reserved.
 // </copyright>
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SeguridadSocialApi.Services.DTOs.Auth;
@@ -31,8 +32,10 @@ public class AuthResponse
 
     /// <summary>
     /// Gets or sets los detalles del error cuando la operación falla.
+    /// Puede ser un string simple o un objeto ErrorDetails.
     /// </summary>
     [JsonPropertyName("error")]
+    [JsonConverter(typeof(FlexibleErrorConverter))]
     public ErrorDetails? Error { get; set; }
 
     /// <summary>
@@ -58,4 +61,49 @@ public class ErrorDetails
     /// </summary>
     [JsonPropertyName("detail")]
     public string Detail { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Converter personalizado para manejar el campo error que puede ser string u objeto.
+/// </summary>
+public class FlexibleErrorConverter : JsonConverter<ErrorDetails?>
+{
+    public override ErrorDetails? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+        {
+            return null;
+        }
+
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            // Si es un string, crear ErrorDetails con el string como Detail
+            var errorMessage = reader.GetString();
+            return new ErrorDetails
+            {
+                Code = string.Empty,
+                Detail = errorMessage ?? string.Empty
+            };
+        }
+
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            // Si es un objeto, deserializar normalmente
+            return JsonSerializer.Deserialize<ErrorDetails>(ref reader, options);
+        }
+
+        throw new JsonException($"Unexpected token type {reader.TokenType} for error field");
+    }
+
+    public override void Write(Utf8JsonWriter writer, ErrorDetails? value, JsonSerializerOptions options)
+    {
+        if (value == null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        // Escribir como objeto
+        JsonSerializer.Serialize(writer, value, options);
+    }
 }

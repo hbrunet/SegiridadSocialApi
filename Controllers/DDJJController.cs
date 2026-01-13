@@ -7,6 +7,7 @@ using SeguridadSocialApi.Repositories;
 using SeguridadSocialApi.Services;
 using SeguridadSocialApi.Services.BackgroundJobs;
 using SeguridadSocialApi.Services.DTOs;
+using System.Security.Claims;
 
 namespace SeguridadSocialApi.Controllers;
 
@@ -69,12 +70,13 @@ public class DDJJController : ControllerBase
 
         _logger.LogInformation("Job {JobId} creado para fusionar datos del periodo {Periodo}", jobId, request.Periodo);
 
+        var username = HttpContext.User?.FindFirst("unique_name")?.Value;
+
         await auditHelper.InsertAuditAsync(
             jobId,
             request,
             "FUSION_DATOS",
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
-            HttpContext.Request.Headers["User-Agent"].ToString());
+            username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);
 
@@ -90,6 +92,6 @@ public class DDJJController : ControllerBase
     public async Task<IActionResult> GenerarPresentacion(
         [FromQuery] DateTime periodo)
     {
-       throw new NotImplementedException();
+        throw new NotImplementedException();
     }
 }

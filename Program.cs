@@ -49,10 +49,7 @@ public class Program
             .ConfigureWebHostDefaults(webBuilder =>
             {
                 webBuilder.UseStartup<Startup>();
-
-                // Configurar URLs desde variables de entorno o usar valores por defecto
-                var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
-                           ?? "https://localhost:5001;http://localhost:5000";
-                webBuilder.UseUrls(urls);
+                // Kestrel leerá automáticamente la configuración desde appsettings.json
+                // La sección "Kestrel:Endpoints" define las URLs de HTTP y HTTPS
             });
 }

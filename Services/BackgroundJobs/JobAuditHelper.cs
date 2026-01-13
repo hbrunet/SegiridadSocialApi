@@ -25,24 +25,21 @@ public class JobAuditHelper
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task InsertAuditAsync<TRequest>(
-string jobId,
-TRequest request,
-string jobType,
-string? ipAddress,
-string? userAgent)
+                                                string jobId,
+                                                TRequest request,
+                                                string jobType,
+                                                string? createdBy)
     {
         var inputJson = System.Text.Json.JsonSerializer.Serialize(request);
 
         try
         {
             await jobAuditRepo.InsertJobAuditAsync(
-                jobId,
-                $"{jobType} - Periodo {GetPeriodoFromRequest(request)}",
-                jobType,
-                inputJson,
-                null,
-                ipAddress,
-                userAgent);
+                                                    jobId,
+                                                    $"{jobType} - Periodo {GetPeriodoFromRequest(request)}",
+                                                    jobType,
+                                                    inputJson,
+                                                    createdBy);
         }
         catch (Exception ex)
         {

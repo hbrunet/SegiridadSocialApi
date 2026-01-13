@@ -14,13 +14,11 @@ public interface IJobAuditRepository
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task<long> InsertJobAuditAsync(
-                            string jobId,
-                            string jobName,
-                            string jobType,
-                            string inputParamsJson,
-                            string? usuario = null,
-                            string? ipAddress = null,
-                            string? userAgent = null);
+                                    string jobId,
+                                    string jobName,
+                                    string jobType,
+                                    string inputParamsJson,
+                                    string? createdBy = null);
 
     /// <summary>
     /// Actualiza el audit cuando el job inicia su ejecución.
@@ -33,23 +31,21 @@ public interface IJobAuditRepository
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task CompleteJobAuditAsync(
-                            string jobId,
-                            string status,
-                            int progressPct,
-                            string? resultDataJson = null,
-                            string? errorMessage = null,
-                            int? registrosProcesados = null,
-                            int? registrosErrores = null);
+        string jobId,
+     string status,
+        int progressPct,
+        string? resultDataJson = null,
+        string? errorMessage = null);
 
     /// <summary>
     /// Agrega un log detallado durante la ejecución del job.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task AddJobLogAsync(
-                    string jobId,
-                    string logLevel,
-                    string logMessage,
-                    int? progressPct = null);
+                        string jobId,
+                        string logLevel,
+                        string logMessage,
+                        int? progressPct = null);
 
     /// <summary>
     /// Obtiene el historial de un job específico.
@@ -62,6 +58,24 @@ public interface IJobAuditRepository
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task<List<JobAuditLogDto>> GetJobLogsAsync(string jobId);
+
+    /// <summary>
+    /// Obtiene auditorías de jobs con filtros opcionales y paginación.
+    /// </summary>
+    /// <param name="createdBy">Filtro opcional por usuario que creó el job.</param>
+    /// <param name="fechaInicio">Filtro opcional por fecha de creación.</param>
+    /// <param name="jobType">Filtro opcional por tipo de job.</param>
+    /// <param name="jobId">Filtro opcional por ID del job.</param>
+    /// <param name="page">Número de página (default: 1).</param>
+    /// <param name="pageSize">Tamaño de página (default: 10).</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task<JobAuditsPaginadasDto> GetJobAuditsAsync(
+                                                    string? createdBy = null,
+                                                    DateTime? fechaInicio = null,
+                                                    string? jobType = null,
+                                                    string? jobId = null,
+                                                    int page = 1,
+                                                    int pageSize = 10);
 }
 
 public class JobAuditDto
@@ -69,8 +83,6 @@ public class JobAuditDto
     public long AuditId { get; set; }
 
     public string JobId { get; set; } = string.Empty;
-
-    public string? InternalJobId { get; set; }
 
     public string JobName { get; set; } = string.Empty;
 
@@ -94,15 +106,9 @@ public class JobAuditDto
 
     public decimal? DurationSeconds { get; set; }
 
-    public int? RegistrosProcesados { get; set; }
+    public string? CreatedBy { get; set; }
 
-    public int? RegistrosErrores { get; set; }
-
-    public string? Usuario { get; set; }
-
-    public string? IpAddress { get; set; }
-
-    public string? UserAgent { get; set; }
+    public DateTime? ModifiedAt { get; set; }
 }
 
 public class JobAuditLogDto
@@ -116,4 +122,11 @@ public class JobAuditLogDto
     public string? LogMessage { get; set; }
 
     public int? ProgressPct { get; set; }
+}
+
+public class JobAuditsPaginadasDto
+{
+    public int TotalRegistros { get; set; }
+
+    public List<JobAuditDto> Audits { get; set; } = new();
 }
