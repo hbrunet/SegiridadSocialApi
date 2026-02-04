@@ -15,8 +15,7 @@ public interface IJobAuditRepository
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task<long> InsertJobAuditAsync(
                                     string jobId,
-                                    string jobName,
-                                    string jobType,
+                                    string endpoint,
                                     string inputParamsJson,
                                     string? createdBy = null);
 
@@ -31,11 +30,11 @@ public interface IJobAuditRepository
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task CompleteJobAuditAsync(
-        string jobId,
-     string status,
-        int progressPct,
-        string? resultDataJson = null,
-        string? errorMessage = null);
+                                string jobId,
+                                string status,
+                                int progressPct,
+                                string? resultDataJson = null,
+                                string? errorMessage = null);
 
     /// <summary>
     /// Agrega un log detallado durante la ejecución del job.
@@ -64,18 +63,18 @@ public interface IJobAuditRepository
     /// </summary>
     /// <param name="createdBy">Filtro opcional por usuario que creó el job.</param>
     /// <param name="fechaInicio">Filtro opcional por fecha de creación.</param>
-    /// <param name="jobType">Filtro opcional por tipo de job.</param>
+    /// <param name="endpoint">Filtro opcional por endpoint.</param>
     /// <param name="jobId">Filtro opcional por ID del job.</param>
     /// <param name="page">Número de página (default: 1).</param>
     /// <param name="pageSize">Tamaño de página (default: 10).</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task<JobAuditsPaginadasDto> GetJobAuditsAsync(
-                                                    string? createdBy = null,
-                                                    DateTime? fechaInicio = null,
-                                                    string? jobType = null,
-                                                    string? jobId = null,
-                                                    int page = 1,
-                                                    int pageSize = 10);
+                                                string? createdBy = null,
+                                                DateTime? fechaInicio = null,
+                                                int? jobType = null,
+                                                string? jobId = null,
+                                                int page = 1,
+                                                int pageSize = 10);
 }
 
 public class JobAuditDto
@@ -84,7 +83,7 @@ public class JobAuditDto
 
     public string JobId { get; set; } = string.Empty;
 
-    public string JobName { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
 
     public string? JobType { get; set; }
 

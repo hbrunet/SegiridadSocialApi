@@ -17,4 +17,6 @@ public interface IConfiguracionRepository
     Task<List<ReparticionDto>> GetReparticionesSegSocialAsync();
 
     Task<List<EstadoDto>> GetEstadosHojaAsync();
+
+    Task<List<JobTypeDto>> GetJobTypesAsync();
 }

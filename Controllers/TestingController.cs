@@ -49,6 +49,7 @@ public class TestingController : ControllerBase
         }
 
         var jobId = Guid.NewGuid().ToString("N");
+        var endpoint = Request.Path.ToString();
         var helper = new BackgroundJobHelper(_backgroundJobExecutor.ServiceProvider, _logger);
         var auditHelper = new JobAuditHelper(
                                             HttpContext.RequestServices.GetRequiredService<IJobAuditRepository>(),
@@ -58,10 +59,10 @@ public class TestingController : ControllerBase
                     jobId,
                     async (progress, cancellationToken) =>
                     {
-                        return await helper.ExecuteJobAsync(
+                        return await helper.ExecuteJobWithLoggingAsync(
                         jobId,
                         $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}",
-                        async (connection, ct) =>
+                        async (connection, jobLogger, ct) =>
                         {
                             var parameters = new DynamicParameters();
                             parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
@@ -90,7 +91,7 @@ public class TestingController : ControllerBase
         await auditHelper.InsertAuditAsync(
                                             jobId,
                                             request,
-                                            "TEST_FUSION_QUICK",
+                                            endpoint,
                                             username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);
@@ -116,6 +117,7 @@ public class TestingController : ControllerBase
         }
 
         var jobId = Guid.NewGuid().ToString("N");
+        var endpoint = Request.Path.ToString();
         var helper = new BackgroundJobHelper(_backgroundJobExecutor.ServiceProvider, _logger);
         var auditHelper = new JobAuditHelper(
             HttpContext.RequestServices.GetRequiredService<IJobAuditRepository>(),
@@ -125,10 +127,10 @@ public class TestingController : ControllerBase
             jobId,
             async (progress, cancellationToken) =>
             {
-                return await helper.ExecuteJobAsync(
+                return await helper.ExecuteJobWithLoggingAsync (
                 jobId,
                 $"Test Fusion Slow - Periodo {request.Periodo:yyyy-MM}",
-                async (connection, ct) =>
+                async (connection, jobLogger, ct) =>
                 {
                     var parameters = new DynamicParameters();
                     parameters.Add("p_periodo", request.Periodo, System.Data.DbType.DateTime, System.Data.ParameterDirection.Input);
@@ -157,7 +159,7 @@ public class TestingController : ControllerBase
         await auditHelper.InsertAuditAsync(
                                             jobId,
                                             request,
-                                            "TEST_FUSION_SLOW",
+                                            endpoint,
                                             username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);

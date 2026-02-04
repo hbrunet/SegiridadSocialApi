@@ -27,7 +27,7 @@ public class JobAuditHelper
     public async Task InsertAuditAsync<TRequest>(
                                                 string jobId,
                                                 TRequest request,
-                                                string jobType,
+                                                string endpoint,
                                                 string? createdBy)
     {
         var inputJson = System.Text.Json.JsonSerializer.Serialize(request);
@@ -36,8 +36,7 @@ public class JobAuditHelper
         {
             await jobAuditRepo.InsertJobAuditAsync(
                                                     jobId,
-                                                    $"{jobType} - Periodo {GetPeriodoFromRequest(request)}",
-                                                    jobType,
+                                                    endpoint,
                                                     inputJson,
                                                     createdBy);
         }
@@ -45,21 +44,5 @@ public class JobAuditHelper
         {
             logger.LogWarning(ex, "Error al insertar auditoría para job {JobId}", jobId);
         }
-    }
-
-    private string GetPeriodoFromRequest<TRequest>(TRequest request)
-    {
-        // Intentar obtener la propiedad Periodo usando reflection
-        var periodoProperty = typeof(TRequest).GetProperty("Periodo");
-        if (periodoProperty != null)
-        {
-            var periodo = periodoProperty.GetValue(request);
-            if (periodo is DateTime dt)
-            {
-                return dt.ToString("yyyy-MM");
-            }
-        }
-
-        return typeof(TRequest).Name;
     }
 }

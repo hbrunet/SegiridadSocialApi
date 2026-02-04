@@ -52,4 +52,11 @@ public class ConfiguracionController : ControllerBase
         var estadosHoja = await configuracionRepository.GetEstadosHojaAsync();
         return Ok(estadosHoja);
     }
+
+    [HttpGet("job-types")]
+    public async Task<IActionResult> GetJobTypes()
+    {
+        var jobTypes = await configuracionRepository.GetJobTypesAsync();
+        return Ok(jobTypes);
+    }
 }

@@ -105,4 +105,23 @@ public class ConfiguracionRepository : IConfiguracionRepository
             throw new ApplicationException($"Error al obtener estados: {ex.Message}");
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<List<JobTypeDto>> GetJobTypesAsync()
+    {
+        try
+        {
+            var sql = @"SELECT ID, NAME, ENDPOINT, METHOD, ENABLED
+      FROM SEGSOCIAL.JOB_TYPE
+   WHERE ENABLED = 1
+          ORDER BY ID";
+
+            var result = await unitOfWork.Connection.QueryAsync<JobTypeDto>(sql);
+            return result.ToList();
+        }
+        catch (Exception ex)
+        {
+            throw new ApplicationException($"Error al obtener tipos de jobs: {ex.Message}");
+        }
+    }
 }

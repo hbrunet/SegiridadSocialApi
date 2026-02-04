@@ -121,7 +121,7 @@ public class JobsController : ControllerBase
     /// </summary>
     /// <param name="createdBy">Filtro opcional por usuario que creó el job.</param>
     /// <param name="fechaInicio">Filtro opcional por fecha de creación.</param>
-    /// <param name="jobType">Filtro opcional por tipo de job.</param>
+    /// <param name="endpoint">Filtro opcional por endpoint.</param>
     /// <param name="jobId">Filtro opcional por ID del job.</param>
     /// <param name="page">Número de página (default: 1).</param>
     /// <param name="pageSize">Tamaño de página (default: 10).</param>
@@ -130,7 +130,7 @@ public class JobsController : ControllerBase
     public async Task<IActionResult> GetJobAudits(
         [FromQuery] string? createdBy = null,
         [FromQuery] DateTime? fechaInicio = null,
-        [FromQuery] string? jobType = null,
+        [FromQuery] int? jobType = null,
         [FromQuery] string? jobId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)

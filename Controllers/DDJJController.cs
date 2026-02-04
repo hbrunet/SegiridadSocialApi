@@ -42,6 +42,9 @@ public class DDJJController : ControllerBase
         }
 
         var jobId = Guid.NewGuid().ToString("N");
+        var endpoint = Request.Path.ToString();
+        var username = HttpContext.User?.FindFirst("unique_name")?.Value;
+
         var helper = new BackgroundJobHelper(_backgroundJobExecutor.ServiceProvider, _logger);
         var auditHelper = new JobAuditHelper(
             HttpContext.RequestServices.GetRequiredService<IJobAuditRepository>(),
@@ -51,31 +54,46 @@ public class DDJJController : ControllerBase
             jobId,
             async (progress, cancellationToken) =>
             {
-                return await helper.ExecuteJobAsync(
+                // ✅ Usar el método con logging dual
+                return await helper.ExecuteJobWithLoggingAsync(
                     jobId,
                     $"Fusionar Datos - Periodo {request.Periodo:yyyy-MM}",
-                    async (connection, ct) =>
+                    async (connection, jobLogger, ct) =>
                     {
-                        await _ddjjRepository.FusionarDatosAsync(connection, request.Periodo, jobId);
+                        // Loguear inicio
+                        await jobLogger.LogInformationAsync("Iniciando fusión de datos", 0);
 
-                        return new FusionDatosResponse
+                        try
                         {
-                            Periodo = request.Periodo,
-                            Estado = "COMPLETADO",
-                            JobId = jobId,
-                        };
+                            await jobLogger.LogInformationAsync($"Procesando periodo: {request.Periodo:yyyy-MM}", 10);
+
+                            // Ejecutar el SP
+                            await _ddjjRepository.FusionarDatosAsync(connection, request.Periodo, jobId);
+
+                            await jobLogger.LogInformationAsync("Fusión completada exitosamente", 100);
+
+                            return new FusionDatosResponse
+                            {
+                                Periodo = request.Periodo,
+                                Estado = "COMPLETADO",
+                                JobId = jobId,
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            await jobLogger.LogErrorAsync("Error durante la fusión", ex);
+                            throw;
+                        }
                     });
             },
             $"Fusionar Datos - Periodo {request.Periodo:yyyy-MM}");
 
         _logger.LogInformation("Job {JobId} creado para fusionar datos del periodo {Periodo}", jobId, request.Periodo);
 
-        var username = HttpContext.User?.FindFirst("unique_name")?.Value;
-
         await auditHelper.InsertAuditAsync(
             jobId,
             request,
-            "FUSION_DATOS",
+            endpoint,
             username);
 
         _backgroundJobExecutor.EnqueueJob(jobId);

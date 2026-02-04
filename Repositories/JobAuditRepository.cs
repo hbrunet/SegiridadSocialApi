@@ -24,8 +24,7 @@ public class JobAuditRepository : IJobAuditRepository
     /// <inheritdoc/>
     public async Task<long> InsertJobAuditAsync(
                                         string jobId,
-                                        string jobName,
-                                        string jobType,
+                                        string endpoint,
                                         string inputParamsJson,
                                         string? createdBy = null)
     {
@@ -34,8 +33,7 @@ public class JobAuditRepository : IJobAuditRepository
                             BEGIN
                             SEGSOCIAL.JOBS_MONITOR.JOB_AUDIT_INSERT(
                             :p_job_id,
-                            :p_job_name,
-                            :p_job_type,
+                            :p_endpoint,
                             :p_input_params,
                             :p_created_by,
                             :p_audit_id
@@ -44,8 +42,7 @@ public class JobAuditRepository : IJobAuditRepository
 
         var parameters = new DynamicParameters();
         parameters.Add("p_job_id", jobId, DbType.String, ParameterDirection.Input);
-        parameters.Add("p_job_name", jobName, DbType.String, ParameterDirection.Input);
-        parameters.Add("p_job_type", jobType, DbType.String, ParameterDirection.Input);
+        parameters.Add("p_endpoint", endpoint, DbType.String, ParameterDirection.Input);
         parameters.Add("p_input_params", inputParamsJson, DbType.String, ParameterDirection.Input);
         parameters.Add("p_created_by", createdBy, DbType.String, ParameterDirection.Input);
         parameters.Add("p_audit_id", dbType: DbType.Int64, direction: ParameterDirection.Output);
@@ -111,28 +108,32 @@ public class JobAuditRepository : IJobAuditRepository
     public async Task<JobAuditDto?> GetJobAuditAsync(string jobId)
     {
         const string sql = @"
-                            SELECT 
-                            AUDIT_ID as AuditId,
-                                JOB_ID as JobId,
-                            JOB_NAME as JobName,
-                            JOB_TYPE as JobType,
-                            INPUT_PARAMS as InputParams,
-                            CREATED_AT as CreatedAt,
-                            STARTED_AT as StartedAt,
-                            COMPLETED_AT as CompletedAt,
-                            STATUS as Status,
-                            PROGRESS_PCT as ProgressPct,
-                            RESULT_DATA as ResultData,
-                            ERROR_MESSAGE as ErrorMessage,
-                            DURATION_SECONDS as DurationSeconds,
-                                CREATED_BY as CreatedBy,
-                            MODIFIED_AT as ModifiedAt
-                            FROM SEGSOCIAL.JOB_AUDIT
-                            WHERE JOB_ID = :JobId";
+    SELECT 
+    JA.AUDIT_ID as AuditId,
+JA.JOB_ID as JobId,
+   JA.ENDPOINT as Endpoint,
+                (SELECT JT.NAME 
+              FROM SEGSOCIAL.JOB_TYPE JT 
+   WHERE UPPER(JA.ENDPOINT) LIKE '%' || UPPER(JT.NAME) || '%'
+     AND JT.ENABLED = 1
+         AND ROWNUM = 1) as JobType,
+                JA.INPUT_PARAMS as InputParams,
+      JA.CREATED_AT as CreatedAt,
+        JA.STARTED_AT as StartedAt,
+                JA.COMPLETED_AT as CompletedAt,
+       JA.STATUS as Status,
+        JA.PROGRESS_PCT as ProgressPct,
+                JA.RESULT_DATA as ResultData,
+                JA.ERROR_MESSAGE as ErrorMessage,
+        JA.DURATION_SECONDS as DurationSeconds,
+      JA.CREATED_BY as CreatedBy,
+         JA.MODIFIED_AT as ModifiedAt
+   FROM SEGSOCIAL.JOB_AUDIT JA
+ WHERE JA.JOB_ID = :JobId";
 
-        return await unitOfWork.Connection.QueryFirstOrDefaultAsync<JobAuditDto>(
-                                                                                    sql,
-                                                                                    new { JobId = jobId });
+    return await unitOfWork.Connection.QueryFirstOrDefaultAsync<JobAuditDto>(
+            sql,
+     new { JobId = jobId });
     }
 
     /// <inheritdoc/>
@@ -160,7 +161,7 @@ public class JobAuditRepository : IJobAuditRepository
     public async Task<JobAuditsPaginadasDto> GetJobAuditsAsync(
                                                                 string? createdBy = null,
                                                                 DateTime? fechaInicio = null,
-                                                                string? jobType = null,
+                                                                int? jobType = null,
                                                                 string? jobId = null,
                                                                 int page = 1,
                                                                 int pageSize = 10)
@@ -172,25 +173,30 @@ public class JobAuditRepository : IJobAuditRepository
 
             if (!string.IsNullOrWhiteSpace(createdBy))
             {
-                whereConditions.Add("UPPER(CREATED_BY) = UPPER(:CreatedBy)");
-                parameters.Add("CreatedBy", createdBy, DbType.String);
+                whereConditions.Add("UPPER(JA.CREATED_BY) LIKE UPPER(:CreatedBy)");
+                parameters.Add("CreatedBy", $"%{createdBy}%", DbType.String);
             }
 
             if (fechaInicio.HasValue)
             {
-                whereConditions.Add("TRUNC(CREATED_AT) = TRUNC(:FechaInicio)");
+                whereConditions.Add("TRUNC(JA.CREATED_AT) = TRUNC(:FechaInicio)");
                 parameters.Add("FechaInicio", fechaInicio.Value, DbType.DateTime);
             }
 
-            if (!string.IsNullOrWhiteSpace(jobType))
+            if (jobType.HasValue)
             {
-                whereConditions.Add("UPPER(JOB_TYPE) = UPPER(:JobType)");
-                parameters.Add("JobType", jobType, DbType.String);
+                var sqlJobType = "SELECT ENDPOINT FROM SEGSOCIAL.JOB_TYPE WHERE ID = :JobType AND ENABLED = 1";
+                var endpoint = await unitOfWork.Connection.QueryFirstOrDefaultAsync<string>(
+                    sqlJobType,
+                    new { JobType = jobType.Value });
+
+                whereConditions.Add("UPPER(JA.ENDPOINT) LIKE UPPER(:Endpoint)");
+                parameters.Add("Endpoint", $"%{endpoint}%", DbType.String);
             }
 
             if (!string.IsNullOrWhiteSpace(jobId))
             {
-                whereConditions.Add("JOB_ID = :JobId");
+                whereConditions.Add("JA.JOB_ID = :JobId");
                 parameters.Add("JobId", jobId, DbType.String);
             }
 
@@ -198,31 +204,37 @@ public class JobAuditRepository : IJobAuditRepository
   ? "WHERE " + string.Join(" AND ", whereConditions)
   : string.Empty;
 
-            // Obtener el conteo total de registros
-            var countSql = $@"SELECT COUNT(*) FROM SEGSOCIAL.JOB_AUDIT {whereClause}";
-            var totalRegistros = await unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
+        // Obtener el conteo total de registros
+       var countSql = $@"SELECT COUNT(*) 
+  FROM SEGSOCIAL.JOB_AUDIT JA
+         {whereClause}";
+          var totalRegistros = await unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-            // Obtener los registros paginados
+    // Obtener los registros paginados
             var sql = $@"
-                        SELECT 
-                        AUDIT_ID as AuditId,
-                        JOB_ID as JobId,
-                        JOB_NAME as JobName,
-                        JOB_TYPE as JobType,
-                        INPUT_PARAMS as InputParams,
-                        CREATED_AT as CreatedAt,
-                        STARTED_AT as StartedAt,
-                        COMPLETED_AT as CompletedAt,
-                        STATUS as Status,
-                        PROGRESS_PCT as ProgressPct,
-                        RESULT_DATA as ResultData,
-                        ERROR_MESSAGE as ErrorMessage,
-                        DURATION_SECONDS as DurationSeconds,
-                        CREATED_BY as CreatedBy,
-                        MODIFIED_AT as ModifiedAt
-                        FROM SEGSOCIAL.JOB_AUDIT
-                            {whereClause}
-                            ORDER BY CREATED_AT DESC";
+         SELECT JA.AUDIT_ID AS AuditId,
+         JA.JOB_ID AS JobId,
+         JA.ENDPOINT AS Endpoint,
+         (SELECT JT.NAME
+            FROM SEGSOCIAL.JOB_TYPE JT
+           WHERE     UPPER (JA.ENDPOINT) LIKE '%' || UPPER (JT.ENDPOINT) || '%'
+                 AND JT.ENABLED = 1
+                 AND ROWNUM = 1)
+            AS JobType,
+         JA.INPUT_PARAMS AS InputParams,
+         JA.CREATED_AT AS CreatedAt,
+         JA.STARTED_AT AS StartedAt,
+         JA.COMPLETED_AT AS CompletedAt,
+         JA.STATUS AS Status,
+         JA.PROGRESS_PCT AS ProgressPct,
+         JA.RESULT_DATA AS ResultData,
+         JA.ERROR_MESSAGE AS ErrorMessage,
+         JA.DURATION_SECONDS AS DurationSeconds,
+         SUBSTR(JA.CREATED_BY, 3) AS CreatedBy,
+         JA.MODIFIED_AT AS ModifiedAt
+    FROM SEGSOCIAL.JOB_AUDIT JA
+    {whereClause}
+    ORDER BY JA.CREATED_AT DESC";
 
             // Agregar paginación con ROWNUM
             parameters.Add("PageSize", pageSize, DbType.Int32);
