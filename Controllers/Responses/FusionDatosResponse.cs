@@ -8,6 +8,8 @@ public class FusionDatosResponse
 {
     public DateTime Periodo { get; set; }
 
+    public long? Cuil { get; set; }
+
     public string Estado { get; set; } = string.Empty;
 
     public string Mensaje { get; set; } = string.Empty;

@@ -84,8 +84,6 @@ public class TestingController : ControllerBase
                     },
                     $"Test Fusion Quick - Periodo {request.Periodo:yyyy-MM}");
 
-        _logger.LogInformation("Job {JobId} creado", jobId);
-
         var username = HttpContext.User?.FindFirst("unique_name")?.Value;
 
         await auditHelper.InsertAuditAsync(
@@ -151,8 +149,6 @@ public class TestingController : ControllerBase
                 });
             },
             $"Test Fusion Slow - Periodo {request.Periodo:yyyy-MM}");
-
-        _logger.LogInformation("Job {JobId} creado", jobId);
 
         var username = HttpContext.User?.FindFirst("unique_name")?.Value;
 

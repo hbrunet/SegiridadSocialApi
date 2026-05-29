@@ -12,6 +12,11 @@ public class FusionDatosRequest
     public DateTime Periodo { get; set; }
 
     /// <summary>
+    /// Gets or sets CUIL del empleador/trabajador a procesar.
+    /// </summary>
+    public long? Cuil { get; set; }
+
+    /// <summary>
     /// Gets or sets flowId opcional si viene de un upload previo.
     /// </summary>
     public string? FlowId { get; set; }

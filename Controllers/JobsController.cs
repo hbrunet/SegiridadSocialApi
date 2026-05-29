@@ -132,10 +132,11 @@ public class JobsController : ControllerBase
         [FromQuery] DateTime? fechaInicio = null,
         [FromQuery] int? jobType = null,
         [FromQuery] string? jobId = null,
+        [FromQuery] DateTime? periodo = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
-        var audits = await jobAuditRepository.GetJobAuditsAsync(createdBy, fechaInicio, jobType, jobId, page, pageSize);
+        var audits = await jobAuditRepository.GetJobAuditsAsync(createdBy, fechaInicio, jobType, jobId, periodo, page, pageSize);
         return Ok(audits);
     }
 }

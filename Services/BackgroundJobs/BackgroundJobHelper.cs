@@ -43,15 +43,22 @@ public class BackgroundJobHelper
         await jobProgressRepo.InitializeAsync(jobId, description);
 
         // Crear tasks
-        var pollingTask = CreatePollingTask(jobId, jobProgressRepo, jobManager, pollingIntervalMs);
+        using var pollingCts = new CancellationTokenSource();
         var workTask = CreateWorkTask(jobId, scope, jobManager, workAction);
+        var pollingTask = CreatePollingTask(jobId, jobProgressRepo, jobManager, pollingIntervalMs, pollingCts.Token);
 
         // Ejecutar en paralelo
         try
         {
-            await Task.WhenAll(workTask, pollingTask);
-            var result = await workTask;
-            return result;
+            try
+            {
+                return await workTask;
+            }
+            finally
+            {
+                await pollingCts.CancelAsync();
+                try { await pollingTask; } catch (OperationCanceledException) { }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -87,19 +94,29 @@ public class BackgroundJobHelper
 
         // Inicializar progreso
         await jobProgressRepo.InitializeAsync(jobId, description);
-        await jobLogger.LogInformationAsync($"Iniciando job: {description}", 0);
+
+        // CTS propio del polling: se cancela cuando el workTask termina (con éxito, error o cancelación),
+        // evitando que el polling quede bloqueado en jobs que no actualizan la tabla de progreso Oracle.
+        using var pollingCts = new CancellationTokenSource();
 
         // Crear tasks
-        var pollingTask = CreatePollingTask(jobId, jobProgressRepo, jobManager, pollingIntervalMs);
         var workTask = CreateWorkTaskWithLogger(jobId, scope, jobManager, jobLogger, workAction);
+        var pollingTask = CreatePollingTask(jobId, jobProgressRepo, jobManager, pollingIntervalMs, pollingCts.Token);
 
         // Ejecutar en paralelo
         try
         {
-            await Task.WhenAll(workTask, pollingTask);
-            var result = await workTask;
-            await jobLogger.LogInformationAsync("Job completado exitosamente", 100);
-            return result;
+            // Esperamos el trabajo; cuando termine (ok, error o cancelación) detenemos el polling
+            try
+            {
+                return await workTask;
+            }
+            finally
+            {
+                await pollingCts.CancelAsync();
+                // Esperamos que el polling se detenga limpiamente antes de salir
+                try { await pollingTask; } catch (OperationCanceledException) { }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -138,11 +155,15 @@ public class BackgroundJobHelper
                                     string jobId,
                                     IJobProgressRepository jobProgressRepo,
                                     IJobManager jobManager,
-                                    int pollingIntervalMs)
+                                    int pollingIntervalMs,
+                                    CancellationToken externalCancellationToken = default)
     {
         return Task.Run(async () =>
      {
-         var cts = jobManager.GetCancellationToken(jobId);
+         // Combinar el token del job (cancelación manual) con el token externo (work finalizado)
+         var jobToken = jobManager.GetCancellationToken(jobId);
+         using var linked = CancellationTokenSource.CreateLinkedTokenSource(jobToken, externalCancellationToken);
+         var cts = linked.Token;
 
          while (!cts.IsCancellationRequested)
          {
@@ -253,8 +274,6 @@ public class BackgroundJobHelper
                 await oracleConnection.OpenAsync(cts);
                 jobManager.RegisterOracleConnection(jobId, oracleConnection);
 
-                await jobLogger.LogInformationAsync("Conexión a Oracle establecida");
-
                 // Ejecutar trabajo con logger
                 return await workAction(oracleConnection, jobLogger, cts);
             }
@@ -277,7 +296,6 @@ public class BackgroundJobHelper
                     {
                         if (oracleConnection.State == ConnectionState.Open)
                         {
-                            await jobLogger.LogInformationAsync("Cerrando conexión a Oracle");
                             oracleConnection.Close();
                         }
 

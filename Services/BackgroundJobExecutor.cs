@@ -72,7 +72,6 @@ public class BackgroundJobExecutor : BackgroundService
 
                 if (jobId != null)
                 {
-                    logger.LogInformation("Procesando job {JobId}", jobId);
                     _ = Task.Run(() => ExecuteJobInScopeAsync(jobId, stoppingToken), stoppingToken);
                 }
             }

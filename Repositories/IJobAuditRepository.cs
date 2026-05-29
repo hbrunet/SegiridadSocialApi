@@ -73,6 +73,7 @@ public interface IJobAuditRepository
                                                 DateTime? fechaInicio = null,
                                                 int? jobType = null,
                                                 string? jobId = null,
+                                                DateTime? periodo = null,
                                                 int page = 1,
                                                 int pageSize = 10);
 }

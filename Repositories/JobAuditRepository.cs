@@ -15,10 +15,12 @@ namespace SeguridadSocialApi.Repositories;
 public class JobAuditRepository : IJobAuditRepository
 {
     private readonly IUnitOfWork unitOfWork;
+    private readonly IConfiguration configuration;
 
-    public JobAuditRepository(IUnitOfWork unitOfWork)
+    public JobAuditRepository(IUnitOfWork unitOfWork, IConfiguration configuration)
     {
         this.unitOfWork = unitOfWork;
+        this.configuration = configuration;
     }
 
     /// <inheritdoc/>
@@ -47,7 +49,14 @@ public class JobAuditRepository : IJobAuditRepository
         parameters.Add("p_created_by", createdBy, DbType.String, ParameterDirection.Input);
         parameters.Add("p_audit_id", dbType: DbType.Int64, direction: ParameterDirection.Output);
 
-        await unitOfWork.Connection.ExecuteAsync(sql, parameters);
+        // Conexión propia para garantizar COMMIT inmediato independiente del UnitOfWork del request HTTP.
+        // Sin esto, el INSERT se pierde con el rollback implícito al cerrar la conexión del scope.
+        var connectionString = configuration["OracleConfig:ConnectionString"]
+            ?? throw new InvalidOperationException("Oracle connection string not configured");
+
+        using var connection = new OracleConnection(connectionString);
+        await connection.OpenAsync();
+        await connection.ExecuteAsync(sql, parameters);
 
         return parameters.Get<long>("p_audit_id");
     }
@@ -131,9 +140,9 @@ JA.JOB_ID as JobId,
    FROM SEGSOCIAL.JOB_AUDIT JA
  WHERE JA.JOB_ID = :JobId";
 
-    return await unitOfWork.Connection.QueryFirstOrDefaultAsync<JobAuditDto>(
-            sql,
-     new { JobId = jobId });
+        return await unitOfWork.Connection.QueryFirstOrDefaultAsync<JobAuditDto>(
+                sql,
+         new { JobId = jobId });
     }
 
     /// <inheritdoc/>
@@ -148,7 +157,7 @@ JA.JOB_ID as JobId,
                             PROGRESS_PCT as ProgressPct
                             FROM SEGSOCIAL.JOB_AUDIT_LOGS
                             WHERE JOB_ID = :JobId
-                            ORDER BY LOG_TIMESTAMP";
+                            ORDER BY PROGRESS_PCT, LOG_TIMESTAMP";
 
         var result = await unitOfWork.Connection.QueryAsync<JobAuditLogDto>(
                                                                              sql,
@@ -163,6 +172,7 @@ JA.JOB_ID as JobId,
                                                                 DateTime? fechaInicio = null,
                                                                 int? jobType = null,
                                                                 string? jobId = null,
+                                                                DateTime? periodo = null,
                                                                 int page = 1,
                                                                 int pageSize = 10)
     {
@@ -200,17 +210,24 @@ JA.JOB_ID as JobId,
                 parameters.Add("JobId", jobId, DbType.String);
             }
 
+            if (periodo.HasValue)
+            {
+                // Oracle 11g compatible: Convertir CLOB a VARCHAR2 para búsqueda
+                whereConditions.Add("DBMS_LOB.SUBSTR(JA.INPUT_PARAMS, 4000, 1) LIKE :Periodo");
+                parameters.Add("Periodo", $"%{periodo.Value:yyyy-MM}%", DbType.String);
+            }
+
             var whereClause = whereConditions.Count > 0
   ? "WHERE " + string.Join(" AND ", whereConditions)
   : string.Empty;
 
-        // Obtener el conteo total de registros
-       var countSql = $@"SELECT COUNT(*) 
+            // Obtener el conteo total de registros
+            var countSql = $@"SELECT COUNT(*) 
   FROM SEGSOCIAL.JOB_AUDIT JA
          {whereClause}";
-          var totalRegistros = await unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
+            var totalRegistros = await unitOfWork.Connection.ExecuteScalarAsync<int>(countSql, parameters);
 
-    // Obtener los registros paginados
+            // Obtener los registros paginados
             var sql = $@"
          SELECT JA.AUDIT_ID AS AuditId,
          JA.JOB_ID AS JobId,

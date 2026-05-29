@@ -55,7 +55,7 @@ internal sealed class JobExecutor
                 // Si no existe, crear el registro inicial
                 var jobInfo = context.JobManager.GetJobInfo(context.JobId);
 
-                logger.LogInformation(
+                logger.LogDebug(
                     "Creando registro de auditoría inicial para job {JobId}",
                     context.JobId);
 
@@ -100,7 +100,7 @@ internal sealed class JobExecutor
     {
         if (context.TimeoutMinutes > 0)
         {
-            logger.LogInformation(
+            logger.LogDebug(
                                     "Job {JobId} ejecutándose con timeout de {Timeout} minutos",
                                     context.JobId,
                                     context.TimeoutMinutes);
