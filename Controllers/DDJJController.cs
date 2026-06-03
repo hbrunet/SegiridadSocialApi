@@ -135,8 +135,8 @@ public class DDJJController : ControllerBase
                         try
                         {
                             // Contar registros como paso previo para reportar progreso real
-                            _jobManager.UpdateProgress(jobId, 5, "Contando registros de la vista...");
-                            jobLogger.LogInformation("Contando registros de la vista...", 5);
+                            _jobManager.UpdateProgress(jobId, 5, "Iniciando proceso de exportación...");
+                            jobLogger.LogInformation("Iniciando proceso de exportación...", 5);
 
                             // Exportar a un MemoryStream; para periodos muy grandes
                             // se podría usar un archivo temporal en disco.
@@ -144,10 +144,10 @@ public class DDJJController : ControllerBase
                             var cantRegistros = await _ddjjRepository.ExportarPresentacionAsync(
                                 connection, request.Periodo, ms, ct);
 
-                            _jobManager.UpdateProgress(jobId, 95, $"Exportación completa: {cantRegistros} registros");
-                            jobLogger.LogInformation($"Exportación completa: {cantRegistros} registros", 95);
+                            _jobManager.UpdateProgress(jobId, 100, $"Exportación completa: {cantRegistros} registros");
+                            jobLogger.LogInformation($"Exportación completa: {cantRegistros} registros", 100);
 
-                            var nombreArchivo = $"PRESENTACION_{request.Periodo:yyyyMM}.txt";
+                            var nombreArchivo = $"PRESENTACION_{request.Periodo:yyyyMM}_{jobId}.txt";
                             var contenido = ms.ToArray();
 
                             // Almacenar el binario en cache separado del Result del job,
@@ -218,6 +218,11 @@ public class DDJJController : ControllerBase
         if (!_cache.TryGetValue($"exportacion:{jobId}", out byte[]? contenido) || contenido == null)
         {
             return StatusCode(410, new { error = "El archivo expiró del caché (TTL: 1 hora). Vuelva a iniciar la exportación." });
+        }
+
+        if (resultado.CantRegistros == 0)
+        {
+            return NoContent();
         }
 
         _logger.LogInformation(
